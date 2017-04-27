@@ -41,7 +41,7 @@ module.exports = (Module)->
 
 
 module.exports = (Module)->
-
+  {co} = Module::Utils
   class AgendaResqueMixin extends LeanRC::Mixin
     @inheritProtected()
 
@@ -52,7 +52,7 @@ module.exports = (Module)->
     @public onRegister: Function,
       default: (args...)->
         @super args...
-        {dbAddress:address, jobsCollection:collection} = @getData()
+        {dbAddress:address, jobsCollection:collection} = @getData()# надо использовать не @getData() а обращаться за конфигами к ConfigurationProxy
         name = os.hostname + '-' + process.pid
         @[ipoAgenda] = new Agenda()
           .database address, collection ? 'delayedJobs'
@@ -62,31 +62,8 @@ module.exports = (Module)->
           .lockLimit 16
           .defaultLockLimit 16
           .defaultLockLifetime 5000
-        @ensureIndexes()
-        @defineProcessors()
         @[ipoAgenda].start()
         return
-
-    @public ensureIndexes: Function,
-      args: []
-      return: Module::NILL
-      default: ->
-        @[ipoAgenda]._db.ensureIndex 'name' # уточнить код. должен быть на коллекции 'delayedQueues'
-        return
-
-    @public @async defineProcessors: Function,
-      args: []
-      return: Module::NILL
-      default: ->
-        for {name, concurrency} in yield @allQueues()
-          @[ipoAgenda].define name, {concurrency}, (job, done)->
-            {scriptName, data} = job.attrs.data
-            script = require "#{Module.ROOT}/scripts/#{scriptName}"
-            # возможно надо вызывать выполнение скрипта внутри отдельного треда
-            # надо исследовать модуль 'webworker-threads'
-            script data # в аранге внутри скрипта module.context.argv - с этим надо что-то придумать.
-          continue
-        yield return
 
     @public onRemove: Function,
       default: (args...)->
@@ -96,6 +73,7 @@ module.exports = (Module)->
 
     @public @async ensureQueue: Function,
       default: (name, concurrency = 1)->
+        name = @fullQueueName name
         {queuesCollection} = @getData()
         voQueuesCollection = @[ipoAgenda]._db.collection queuesCollection ? 'delayedQueues'
         if (queue = yield voQueuesCollection.findOne name: name)?
@@ -107,6 +85,7 @@ module.exports = (Module)->
 
     @public @async getQueue: Function,
       default: (name)->
+        name = @fullQueueName name
         {queuesCollection} = @getData()
         voQueuesCollection = @[ipoAgenda]._db.collection queuesCollection ? 'delayedQueues'
         if (queue = yield voQueuesCollection.findOne name: name)?
@@ -116,10 +95,11 @@ module.exports = (Module)->
           yield return
 
     @public @async removeQueue: Function,
-      default: (name)->
+      default: (queueName)->
+        queueName = @fullQueueName queueName
         {queuesCollection} = @getData()
         voQueuesCollection = @[ipoAgenda]._db.collection queuesCollection ? 'delayedQueues'
-        if (queue = yield voQueuesCollection.findOne name: name)?
+        if (queue = yield voQueuesCollection.findOne name: queueName)?
           yield voQueuesCollection.remove queue._id
         yield return
 
@@ -132,6 +112,7 @@ module.exports = (Module)->
 
     @public @async pushJob: Function,
       default: (queueName, scriptName, data, delayUntil)->
+        queueName = @fullQueueName queueName
         yield return Module::Promise.new (resolve, reject)->
           job = @[ipoAgenda].create queueName, {scriptName, data}
           if delayUntil?
@@ -146,6 +127,7 @@ module.exports = (Module)->
 
     @public @async getJob: Function,
       default: (queueName, jobId)->
+        queueName = @fullQueueName queueName
         yield return Module::Promise.new (resolve, reject)->
           @[ipoAgenda].jobs {name: queueName, _id: jobId}, (err, [job] = [])->
             if err
@@ -155,6 +137,7 @@ module.exports = (Module)->
 
     @public @async deleteJob: Function,
       default: (queueName, jobId)->
+        queueName = @fullQueueName queueName
         job = yield @getJob queueName, jobId
         if job?
           yield Module::Promise.new (resolve, reject)->
@@ -170,6 +153,7 @@ module.exports = (Module)->
 
     @public @async abortJob: Function,
       default: (queueName, jobId)->
+        queueName = @fullQueueName queueName
         job = yield @getJob queueName, jobId
         if job? and job.status is 'scheduled'
           yield Module::Promise.new (resolve, reject)->
@@ -183,6 +167,7 @@ module.exports = (Module)->
 
     @public @async allJobs: Function,
       default: (queueName, scriptName)->
+        queueName = @fullQueueName queueName
         yield return Module::Promise.new (resolve, reject)->
           @[ipoAgenda].jobs {name: queueName, data: {scriptName}}, (err, jobs)->
             if err
@@ -192,6 +177,7 @@ module.exports = (Module)->
 
     @public @async pendingJobs: Function,
       default: (queueName, scriptName)->
+        queueName = @fullQueueName queueName
         yield return Module::Promise.new (resolve, reject)->
           @[ipoAgenda].jobs
             name: queueName
@@ -205,6 +191,7 @@ module.exports = (Module)->
 
     @public @async progressJobs: Function,
       default: (queueName, scriptName)->
+        queueName = @fullQueueName queueName
         yield return Module::Promise.new (resolve, reject)->
           @[ipoAgenda].jobs
             name: queueName
@@ -218,6 +205,7 @@ module.exports = (Module)->
 
     @public @async completedJobs: Function,
       default: (queueName, scriptName)->
+        queueName = @fullQueueName queueName
         yield return Module::Promise.new (resolve, reject)->
           @[ipoAgenda].jobs
             name: queueName
@@ -231,6 +219,7 @@ module.exports = (Module)->
 
     @public @async failedJobs: Function,
       default: (queueName, scriptName)->
+        queueName = @fullQueueName queueName
         yield return Module::Promise.new (resolve, reject)->
           @[ipoAgenda].jobs
             name: queueName

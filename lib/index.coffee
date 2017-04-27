@@ -39,6 +39,7 @@ class AgendaExtension extends LeanRC::Mixin
   @inheritProtected()
 
   require('./mixins/AgendaResqueMixin') AgendaExtension
+  require('./mediators/AgendaExecutor') AgendaExtension
 
 
 module.exports = AgendaExtension.initialize()
