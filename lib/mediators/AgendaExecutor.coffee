@@ -1,7 +1,6 @@
 
 
 _             = require 'lodash'
-LeanRC        = require 'LeanRC'
 os            = require 'os'
 Agenda        = require 'agenda'
 EventEmitter  = require 'events'
@@ -44,9 +43,9 @@ module.exports = (Module)->
 
 
 module.exports = (Module)->
-  {co} = LeanRC::Utils
+  {co} = Module::Utils
 
-  class AgendaExecutor extends LeanRC::Mediator
+  class AgendaExecutor extends Module::Mediator
     @inheritProtected()
 
     @module Module
@@ -62,7 +61,7 @@ module.exports = (Module)->
     @public listNotificationInterests: Function,
       default: ->
         [
-          LeanRC::JOB_RESULT
+          Module::JOB_RESULT
         ]
 
     @public handleNotification: Function,
@@ -71,7 +70,7 @@ module.exports = (Module)->
         voBody = aoNotification.getBody()
         vsType = aoNotification.getType()
         switch vsName
-          when LeanRC::JOB_RESULT
+          when Module::JOB_RESULT
             @getViewComponent().emit vsType, voBody
         return
 
@@ -80,7 +79,7 @@ module.exports = (Module)->
         @super args...
         {dbAddress:address, jobsCollection:collection} = @getData() # надо использовать не @getData() а обращаться за конфигами к ConfigurationProxy
         @setViewComponent new EventEmitter()
-        @[ipoResque] = @facade.retriveProxy LeanRC::RESQUE
+        @[ipoResque] = @facade.retriveProxy Module::RESQUE
         name = os.hostname + '-' + process.pid
         @[ipoAgenda] = new Agenda()
           .database address, collection ? 'delayedJobs'
@@ -97,14 +96,14 @@ module.exports = (Module)->
 
     @public ensureIndexes: Function,
       args: []
-      return: LeanRC::NILL
+      return: Module::NILL
       default: ->
         @[ipoAgenda]._db.ensureIndex 'name' # уточнить код. должен быть на коллекции 'delayedQueues'
         return
 
     @public @async defineProcessors: Function,
       args: []
-      return: LeanRC::NILL
+      return: Module::NILL
       default: ->
         for {name, concurrency} in yield @[ipoResque].allQueues()
           [moduleName] = name.split '|>'
