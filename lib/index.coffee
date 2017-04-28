@@ -34,12 +34,17 @@ module.exports = TestApp.initialize().freeze()
 ```
 ###
 
+Extension = (BaseClass) ->
+  class AgendaExtension extends BaseClass
+    @inheritProtected()
 
-class AgendaExtension extends LeanRC::Mixin
-  @inheritProtected()
+    require('./mixins/AgendaResqueMixin') @Module
+    require('./mediators/AgendaExecutor') @Module
+  AgendaExtension.initializeMixin()
 
-  require('./mixins/AgendaResqueMixin') AgendaExtension
-  require('./mediators/AgendaExecutor') AgendaExtension
+sample = Extension RC::Module
+Reflect.defineProperty Extension, 'reification',
+  value: sample
 
 
-module.exports = AgendaExtension.initialize()
+module.exports = Extension
