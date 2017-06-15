@@ -1,0 +1,8 @@
+--compilers coffee:coffee-script/register
+--reporter spec
+--check-leaks
+--growl
+test/lib/
+test/lib/mediators/
+test/lib/mixins/
+test/

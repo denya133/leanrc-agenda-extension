@@ -107,8 +107,9 @@ module.exports = (Module)->
         default: ->
           {queuesCollection} = @getData()
           voQueuesCollection = @[ipoAgenda]._db.collection queuesCollection ? 'delayedQueues'
-          yield return for {name, concurrency} in yield voQueuesCollection.find()
+          result = for {name, concurrency} in yield voQueuesCollection.find()
             {name, concurrency}
+          yield return result
 
       @public @async pushJob: Function,
         default: (queueName, scriptName, data, delayUntil)->
