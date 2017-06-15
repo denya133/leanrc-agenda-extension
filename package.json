@@ -47,6 +47,7 @@
   },
   "dependencies": {
     "LeanRC": "git+ssh://git@bitbucket.org/webbasis/leanrc.git#v3.0.0-rc.6",
+    "agenda": "^0.9.1",
     "change-case": "3.0.0",
     "commander": "2.9.0",
     "fs-extra": "0.30.0",

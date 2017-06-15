@@ -1,0 +1,21 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "configuration": {
+    "test1": {
+      "description": "test1 description",
+      "type": "string",
+      "default": "default"
+    },
+    "test2": {
+      "description": "test2 description",
+      "type": "number",
+      "default": 42
+    },
+    "test3": {
+      "description": "test3 description",
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

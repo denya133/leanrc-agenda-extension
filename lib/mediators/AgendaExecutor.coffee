@@ -48,6 +48,8 @@ module.exports = (Module)->
   class AgendaExecutor extends Module::Mediator
     @inheritProtected()
 
+    @include Module::ConfigurableMixin
+
     @module Module
 
     @public fullQueueName: Function,
@@ -77,7 +79,7 @@ module.exports = (Module)->
     @public onRegister: Function,
       default: (args...)->
         @super args...
-        {dbAddress:address, jobsCollection:collection} = @getData() # надо использовать не @getData() а обращаться за конфигами к ConfigurationProxy
+        {dbAddress:address, jobsCollection:collection} = @config # надо использовать не @getData() а обращаться за конфигами к ConfigurationProxy
         @setViewComponent new EventEmitter()
         @[ipoResque] = @facade.retriveProxy Module::RESQUE
         name = os.hostname + '-' + process.pid

@@ -47,12 +47,14 @@ module.exports = (Module)->
     class AgendaResqueMixin extends BaseClass
       @inheritProtected()
 
+      @include Module::ConfigurableMixin
+
       ipoAgenda = @private agenda: Object
 
       @public onRegister: Function,
         default: (args...)->
           @super args...
-          {dbAddress:address, jobsCollection:collection} = @getData()# надо использовать не @getData() а обращаться за конфигами к ConfigurationProxy
+          {dbAddress:address, jobsCollection:collection} = @config
           name = os.hostname + '-' + process.pid
           @[ipoAgenda] = new Agenda()
             .database address, collection ? 'delayedJobs'
