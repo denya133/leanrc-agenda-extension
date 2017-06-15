@@ -1,6 +1,7 @@
 { expect, assert } = require 'chai'
 sinon = require 'sinon'
 _ = require 'lodash'
+Agenda = require 'agenda'
 LeanRC = require 'LeanRC'
 AgendaExtension = require.main.require 'lib'
 { co } = LeanRC::Utils
@@ -23,10 +24,13 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         assert.instanceOf resque, TestResque
         yield return
-  ###
-  describe '#fullQueueName', ->
-    it 'should get queue full name', ->
+  describe '#onRegister', ->
+    facade = null
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_001'
+    after = -> facade?.remove?()
+    it 'should run on-register flow', ->
       co ->
+        facade = LeanRC::Facade.getInstance KEY
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
@@ -37,9 +41,14 @@ describe 'AgendaResqueMixin', ->
           @include Test::AgendaResqueMixin
           @module Test
         TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
-        assert.equal resque.fullQueueName('TEST_QUEUE'), 'test_test_queue'
+        resque.initializeNotifier KEY
+        resque.onRegister()
+        assert.instanceOf resque[TestResque.instanceVariables['_agenda'].pointer], Agenda
         yield return
+  ###
   describe '#ensureQueue', ->
     after -> Queues.delete 'test_test_queue'
     it 'should create queue config', ->

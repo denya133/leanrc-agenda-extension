@@ -43,7 +43,7 @@ module.exports = (Module)->
 module.exports = (Module)->
   {co} = Module::Utils
 
-  Module.defineMixin (BaseClass) ->
+  Module.defineMixin Module::Resque, (BaseClass) ->
     class AgendaResqueMixin extends BaseClass
       @inheritProtected()
 
@@ -54,7 +54,7 @@ module.exports = (Module)->
       @public onRegister: Function,
         default: (args...)->
           @super args...
-          {dbAddress:address, jobsCollection:collection} = @config
+          {dbAddress:address, jobsCollection:collection} = @configs
           name = os.hostname + '-' + process.pid
           @[ipoAgenda] = new Agenda()
             .database address, collection ? 'delayedJobs'

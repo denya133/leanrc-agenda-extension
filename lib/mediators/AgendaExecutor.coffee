@@ -79,7 +79,7 @@ module.exports = (Module)->
     @public onRegister: Function,
       default: (args...)->
         @super args...
-        {dbAddress:address, jobsCollection:collection} = @config # надо использовать не @getData() а обращаться за конфигами к ConfigurationProxy
+        {dbAddress:address, jobsCollection:collection} = @configs
         @setViewComponent new EventEmitter()
         @[ipoResque] = @facade.retriveProxy Module::RESQUE
         name = os.hostname + '-' + process.pid
