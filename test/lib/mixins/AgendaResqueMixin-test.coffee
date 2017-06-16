@@ -301,7 +301,7 @@ describe 'AgendaResqueMixin', ->
           type: 'normal'
           priority: 0
         assert.deepEqual job.data, data: DATA, scriptName: 'TEST_SCRIPT'
-        assert.equal job._id.toString(), jobId
+        assert.equal "#{job._id}", jobId
         assert.equal job.nextRunAt.toISOString(), DATE.toISOString()
         assert.equal job.lastModifiedBy, agenda._name
         yield return
@@ -344,7 +344,7 @@ describe 'AgendaResqueMixin', ->
           type: 'normal'
           priority: 0
         assert.deepEqual job.data, data: DATA, scriptName: 'TEST_SCRIPT'
-        assert.equal job._id.toString(), jobId
+        assert.equal "#{job._id}", jobId
         assert.equal job.nextRunAt.toISOString(), DATE.toISOString()
         assert.equal job.lastModifiedBy, agenda._name
         yield return
@@ -352,7 +352,7 @@ describe 'AgendaResqueMixin', ->
     facade = null
     agenda = null
     queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_008'
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_009'
     after ->
       co ->
         yield clearTempQueues agenda, queueNames
@@ -387,22 +387,25 @@ describe 'AgendaResqueMixin', ->
           type: 'normal'
           priority: 0
         assert.deepEqual job.data, data: DATA, scriptName: 'TEST_SCRIPT'
-        assert.equal job._id.toString(), jobId
+        assert.equal "#{job._id}", jobId
         assert.equal job.nextRunAt.toISOString(), DATE.toISOString()
         assert.equal job.lastModifiedBy, agenda._name
         assert.isTrue yield resque.deleteJob 'TEST_QUEUE_1', jobId
         assert.isNull yield resque.getJob 'TEST_QUEUE_1', jobId
         yield return
-  ###
   describe '#abortJob', ->
-    jobId = null
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_010'
     after ->
-      if jobId? and (try db._jobs.document jobId)
-        db._jobs.remove jobId
-      Queues.delete 'default'
-      Queues.delete 'test_test_queue_1'
+      co ->
+        yield clearTempQueues agenda, queueNames
+        facade?.remove?()
+        yield return
     it 'should discard job', ->
       co ->
+        facade = LeanRC::Facade.getInstance KEY
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
@@ -413,46 +416,40 @@ describe 'AgendaResqueMixin', ->
           @include Test::AgendaResqueMixin
           @module Test
         TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
-        resque.onRegister()
-        resque.ensureQueue 'TEST_QUEUE_1', 1
+        facade.registerProxy resque
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
+        queueNames.push name
         DATA = data: 'data'
         DATE = new Date Date.now() + 60000
         jobId = yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT', DATA, DATE
         job = yield resque.getJob 'TEST_QUEUE_1', jobId
         assert.include job,
-          _key: jobId.replace /^_jobs\//, ''
-          _id: jobId
-          status: 'pending'
-          queue: 'test_test_queue_1'
-          runs: 0
-          delayUntil: DATE.getTime()
-          maxFailures: 0
-          repeatDelay: 0
-          repeatTimes: 0
-          repeatUntil: -1
-        assert.deepEqual job.type, name: 'TEST_SCRIPT', mount: '/test'
-        assert.deepEqual job.failures, []
-        assert.deepEqual job.data, DATA
+          name: 'Test|>TEST_QUEUE_1'
+          type: 'normal'
+          priority: 0
+        assert.deepEqual job.data, data: DATA, scriptName: 'TEST_SCRIPT'
+        assert.equal "#{job._id}", jobId
+        assert.equal job.nextRunAt.toISOString(), DATE.toISOString()
+        assert.equal job.lastModifiedBy, agenda._name
         yield resque.abortJob 'TEST_QUEUE_1', jobId
         job = yield resque.getJob 'TEST_QUEUE_1', jobId
         assert.include job,
-          _key: jobId.replace /^_jobs\//, ''
-          _id: jobId
-          status: 'failed'
-          queue: 'test_test_queue_1'
-          runs: 0
-          delayUntil: DATE.getTime()
-          maxFailures: 0
-          repeatDelay: 0
-          repeatTimes: 0
-          repeatUntil: -1
-        assert.deepEqual job.type, name: 'TEST_SCRIPT', mount: '/test'
-        assert.property job.failures[0], 'stack'
-        assert.propertyVal job.failures[0], 'message', 'Job aborted.'
-        assert.propertyVal job.failures[0], 'name', 'Error'
-        assert.deepEqual job.data, DATA
+          name: 'Test|>TEST_QUEUE_1'
+          type: 'normal'
+          priority: 0
+          failReason: 'Job has been aborted'
+          failCount: 1
+        assert.deepEqual job.data, data: DATA, scriptName: 'TEST_SCRIPT'
+        assert.equal "#{job._id}", jobId
+        assert.equal job.nextRunAt.toISOString(), DATE.toISOString()
+        assert.equal job.lastModifiedBy, agenda._name
+        assert.isDefined job.failedAt
         yield return
+  ###
   describe '#allJobs', ->
     ids = []
     after ->

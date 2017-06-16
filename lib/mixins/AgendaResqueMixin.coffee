@@ -168,9 +168,8 @@ module.exports = (Module)->
 
       @public @async abortJob: Function,
         default: (queueName, jobId)->
-          queueName = @fullQueueName queueName
-          job = yield @getJob queueName, jobId
-          if job? and job.status is 'scheduled'
+          job = yield @getJob queueName, jobId, native: yes
+          if job? and not job.attrs.failReason? and not job.attrs.failedAt?
             yield Module::Promise.new (resolve, reject)->
               job.fail new Error 'Job has been aborted'
               job.save (err)->
