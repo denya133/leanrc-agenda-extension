@@ -93,7 +93,7 @@ describe 'AgendaResqueMixin', ->
         collection = agenda?._mdb.collection 'delayedQueues'
         if collection?
           for name in queueNames
-            yield collection.remove { name }
+            yield collection.deleteOne { name }
         facade?.remove?()
         yield return
     it 'should create queue config', ->
@@ -129,13 +129,21 @@ describe 'AgendaResqueMixin', ->
         count = yield collection.count { name }
         assert.equal count, 1
         yield return
-  ###
   describe '#getQueue', ->
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_004'
     after ->
-      Queues.delete 'default'
-      Queues.delete 'test_test_queue'
+      collection = agenda?._mdb.collection 'delayedQueues'
+      if collection?
+        for name in queueNames
+          yield collection.deleteOne { name }
+      facade?.remove?()
+      yield return
     it 'should get queue', ->
       co ->
+        facade = LeanRC::Facade.getInstance KEY
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
@@ -146,13 +154,18 @@ describe 'AgendaResqueMixin', ->
           @include Test::AgendaResqueMixin
           @module Test
         TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
-        resque.onRegister()
-        resque.ensureQueue 'TEST_QUEUE', 5
+        facade.registerProxy resque
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        yield resque.ensureQueue 'TEST_QUEUE', 5
         queue = yield resque.getQueue 'TEST_QUEUE'
-        assert.propertyVal queue, 'name', 'test_test_queue'
+        queueNames.push queue.name
+        assert.propertyVal queue, 'name', 'Test|>TEST_QUEUE'
         assert.propertyVal queue, 'concurrency', 5
         yield return
+  ###
   describe '#removeQueue', ->
     after ->
       Queues.delete 'default'
