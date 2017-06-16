@@ -165,13 +165,21 @@ describe 'AgendaResqueMixin', ->
         assert.propertyVal queue, 'name', 'Test|>TEST_QUEUE'
         assert.propertyVal queue, 'concurrency', 5
         yield return
-  ###
   describe '#removeQueue', ->
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_005'
     after ->
-      Queues.delete 'default'
-      Queues.delete 'test_test_queue'
+      collection = agenda?._mdb.collection 'delayedQueues'
+      if collection?
+        for name in queueNames
+          yield collection.deleteOne { name }
+      facade?.remove?()
+      yield return
     it 'should remove queue', ->
       co ->
+        facade = LeanRC::Facade.getInstance KEY
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
@@ -182,15 +190,20 @@ describe 'AgendaResqueMixin', ->
           @include Test::AgendaResqueMixin
           @module Test
         TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
-        resque.onRegister()
-        resque.ensureQueue 'TEST_QUEUE', 5
+        facade.registerProxy resque
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        { name } = yield resque.ensureQueue 'TEST_QUEUE', 5
+        queueNames.push name
         queue = yield resque.getQueue 'TEST_QUEUE'
         assert.isDefined queue
         yield resque.removeQueue 'TEST_QUEUE'
         queue = yield resque.getQueue 'TEST_QUEUE'
         assert.isUndefined queue
         yield return
+  ###
   describe '#allQueues', ->
     after ->
       Queues.delete 'default'

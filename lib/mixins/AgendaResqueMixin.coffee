@@ -108,8 +108,7 @@ module.exports = (Module)->
           queueName = @fullQueueName queueName
           {queuesCollection} = @configs
           voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
-          if (queue = yield voQueuesCollection.findOne name: queueName)?
-            yield voQueuesCollection.remove queue._id
+          yield voQueuesCollection.deleteOne name: queueName
           yield return
 
       @public @async allQueues: Function,
