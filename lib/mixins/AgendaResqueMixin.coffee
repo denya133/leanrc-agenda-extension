@@ -123,17 +123,19 @@ module.exports = (Module)->
       @public @async pushJob: Function,
         default: (queueName, scriptName, data, delayUntil)->
           queueName = @fullQueueName queueName
-          yield return Module::Promise.new (resolve, reject)->
-            job = (yield @[ipoAgenda]).create queueName, {scriptName, data}
+          voAgenda = yield @[ipoAgenda]
+          createJob = (name, data, { delayUntil }, cb) ->
             if delayUntil?
-              job.schedule delayUntil
+              voAgenda.schedule delayUntil, name, data, cb
             else
-              job.now()
-            job.save (err)->
+              voAgenda.now name, data, cb
+          yield return Module::Promise.new (resolve, reject)->
+            job = createJob queueName, {scriptName, data}, { delayUntil }, (err) ->
               if err?
                 reject err
               else
-                resolve job._id
+                resolve job.attrs._id
+            return
 
       @public @async getJob: Function,
         default: (queueName, jobId)->
