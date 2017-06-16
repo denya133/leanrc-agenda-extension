@@ -140,12 +140,13 @@ module.exports = (Module)->
       @public @async getJob: Function,
         default: (queueName, jobId)->
           queueName = @fullQueueName queueName
+          voAgenda = yield @[ipoAgenda]
           yield return Module::Promise.new (resolve, reject)->
-            (yield @[ipoAgenda]).jobs {name: queueName, _id: jobId}, (err, [job] = [])->
+            voAgenda.jobs {name: queueName, _id: jobId}, (err, [job] = [])->
               if err
                 reject err
               else
-                resolve job
+                resolve job.attrs
 
       @public @async deleteJob: Function,
         default: (queueName, jobId)->

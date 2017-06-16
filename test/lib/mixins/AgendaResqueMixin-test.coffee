@@ -267,17 +267,14 @@ describe 'AgendaResqueMixin', ->
     facade = null
     agenda = null
     queueNames = []
-    jobIds = []
     KEY = 'TEST_AGENDA_RESQUE_MIXIN_007'
     after ->
       co ->
         jobsCollection = agenda?._mdb.collection 'delayedJobs'
-        if jobsCollection?
-          for jobId in jobIds
-            yield jobsCollection.deleteOne { _id: jobId }
         queuesCollection = agenda?._mdb.collection 'delayedQueues'
         if queuesCollection?
           for name in queueNames
+            yield jobsCollection.deleteMany { name }
             yield queuesCollection.deleteOne { name }
         facade?.remove?()
         yield return
@@ -304,7 +301,6 @@ describe 'AgendaResqueMixin', ->
         DATA = data: 'data'
         DATE = new Date Date.now() + 60000
         jobId = yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT', DATA, DATE
-        jobIds.push jobId
         jobsCollection = agenda?._mdb.collection 'delayedJobs'
         job = yield jobsCollection.findOne _id: jobId
         assert.include job,
@@ -315,15 +311,24 @@ describe 'AgendaResqueMixin', ->
         assert.equal job.nextRunAt.toISOString(), DATE.toISOString()
         assert.equal job.lastModifiedBy, agenda._name
         yield return
-  ###
   describe '#getJob', ->
-    jobId = null
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_008'
     after ->
-      db._jobs.remove jobId  if jobId?
-      Queues.delete 'default'
-      Queues.delete 'test_test_queue_1'
+      co ->
+        jobsCollection = agenda?._mdb.collection 'delayedJobs'
+        queuesCollection = agenda?._mdb.collection 'delayedQueues'
+        if queuesCollection?
+          for name in queueNames
+            yield jobsCollection.deleteMany { name }
+            yield queuesCollection.deleteOne { name }
+        facade?.remove?()
+        yield return
     it 'should get saved job', ->
       co ->
+        facade = LeanRC::Facade.getInstance KEY
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
@@ -334,28 +339,26 @@ describe 'AgendaResqueMixin', ->
           @include Test::AgendaResqueMixin
           @module Test
         TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
-        resque.onRegister()
-        resque.ensureQueue 'TEST_QUEUE_1', 1
+        facade.registerProxy resque
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
+        queueNames.push name
         DATA = data: 'data'
         DATE = new Date Date.now() + 60000
         jobId = yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT', DATA, DATE
         job = yield resque.getJob 'TEST_QUEUE_1', jobId
         assert.include job,
-          _key: jobId.replace /^_jobs\//, ''
-          _id: jobId
-          status: 'pending'
-          queue: 'test_test_queue_1'
-          runs: 0
-          delayUntil: DATE.getTime()
-          maxFailures: 0
-          repeatDelay: 0
-          repeatTimes: 0
-          repeatUntil: -1
-        assert.deepEqual job.type, name: 'TEST_SCRIPT', mount: '/test'
-        assert.deepEqual job.failures, []
-        assert.deepEqual job.data, DATA
+          name: 'Test|>TEST_QUEUE_1'
+          type: 'normal'
+          priority: 0
+        assert.equal job._id.toString(), jobId
+        assert.equal job.nextRunAt.toISOString(), DATE.toISOString()
+        assert.equal job.lastModifiedBy, agenda._name
         yield return
+  ###
   describe '#deleteJob', ->
     jobId = null
     after ->
