@@ -138,7 +138,7 @@ module.exports = (Module)->
             return
 
       @public @async getJob: Function,
-        default: (queueName, jobId)->
+        default: (queueName, jobId, options = {})->
           queueName = @fullQueueName queueName
           voAgenda = yield @[ipoAgenda]
           yield return Module::Promise.new (resolve, reject)->
@@ -146,12 +146,14 @@ module.exports = (Module)->
               if err
                 reject err
               else
-                resolve job.attrs
+                resolve if job?
+                  if options.native then job else job.attrs
+                else
+                  null
 
       @public @async deleteJob: Function,
         default: (queueName, jobId)->
-          queueName = @fullQueueName queueName
-          job = yield @getJob queueName, jobId
+          job = yield @getJob queueName, jobId, native: yes
           if job?
             yield Module::Promise.new (resolve, reject)->
               job.remove (err)->
