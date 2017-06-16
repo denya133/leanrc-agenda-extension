@@ -84,19 +84,19 @@ module.exports = (Module)->
         default: (name, concurrency = 1)->
           name = @fullQueueName name
           {queuesCollection} = @configs
-          voQueuesCollection = (yield @[ipoAgenda])._collection.db.collection queuesCollection ? 'delayedQueues'
+          voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
           if (queue = yield voQueuesCollection.findOne name: name)?
             queue.concurrency = concurrency
-            yield voQueuesCollection.update {name}, queue
+            yield voQueuesCollection.updateOne {name}, queue
           else
-            yield voQueuesCollection.push {name, concurrency}
+            yield voQueuesCollection.insertOne {name, concurrency}
           yield return {name, concurrency}
 
       @public @async getQueue: Function,
         default: (name)->
           name = @fullQueueName name
           {queuesCollection} = @configs
-          voQueuesCollection = (yield @[ipoAgenda])._collection.db.collection queuesCollection ? 'delayedQueues'
+          voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
           if (queue = yield voQueuesCollection.findOne name: name)?
             {concurrency} = queue
             yield return {name, concurrency}
@@ -107,7 +107,7 @@ module.exports = (Module)->
         default: (queueName)->
           queueName = @fullQueueName queueName
           {queuesCollection} = @configs
-          voQueuesCollection = (yield @[ipoAgenda])._collection.db.collection queuesCollection ? 'delayedQueues'
+          voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
           if (queue = yield voQueuesCollection.findOne name: queueName)?
             yield voQueuesCollection.remove queue._id
           yield return
@@ -115,7 +115,7 @@ module.exports = (Module)->
       @public @async allQueues: Function,
         default: ->
           {queuesCollection} = @configs
-          voQueuesCollection = (yield @[ipoAgenda])._collection.db.collection queuesCollection ? 'delayedQueues'
+          voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
           result = for {name, concurrency} in yield voQueuesCollection.find()
             {name, concurrency}
           yield return result

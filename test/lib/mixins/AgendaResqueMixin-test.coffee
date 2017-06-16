@@ -27,7 +27,7 @@ describe 'AgendaResqueMixin', ->
   describe '#onRegister', ->
     facade = null
     KEY = 'TEST_AGENDA_RESQUE_MIXIN_001'
-    after = -> facade?.remove?()
+    after -> facade?.remove?()
     it 'should run on-register flow', ->
       co ->
         facade = LeanRC::Facade.getInstance KEY
@@ -58,7 +58,7 @@ describe 'AgendaResqueMixin', ->
   describe '#onRemove', ->
     facade = null
     KEY = 'TEST_AGENDA_RESQUE_MIXIN_002'
-    after = -> facade?.remove?()
+    after -> facade?.remove?()
     it 'should run on-remove flow', ->
       co ->
         facade = LeanRC::Facade.getInstance KEY
@@ -83,11 +83,22 @@ describe 'AgendaResqueMixin', ->
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         assert.isTrue spyStop.called
         yield return
-  ###
   describe '#ensureQueue', ->
-    after -> Queues.delete 'test_test_queue'
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_003'
+    after ->
+      co ->
+        collection = agenda?._mdb.collection 'delayedQueues'
+        if collection?
+          for name in queueNames
+            yield collection.remove { name }
+        facade?.remove?()
+        yield return
     it 'should create queue config', ->
       co ->
+        facade = LeanRC::Facade.getInstance KEY
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
@@ -98,14 +109,27 @@ describe 'AgendaResqueMixin', ->
           @include Test::AgendaResqueMixin
           @module Test
         TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
-        resque.onRegister()
+        facade.registerProxy resque
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         { name, concurrency } = yield resque.ensureQueue 'TEST_QUEUE', 5
-        queue = Queues.get name
-        assert.propertyVal queue, 'name', 'test_test_queue'
-        data = db._queues.document queue.name
-        assert.propertyVal data, 'maxWorkers', 5
+        queueNames.push name
+        assert.equal name, 'Test|>TEST_QUEUE'
+        assert.equal concurrency, 5
+        collection = agenda._mdb.collection 'delayedQueues'
+        count = yield collection.count { name }
+        assert.equal count, 1
+        { name, concurrency } = yield resque.ensureQueue 'TEST_QUEUE', 5
+        queueNames.push name
+        assert.equal name, 'Test|>TEST_QUEUE'
+        assert.equal concurrency, 5
+        collection = agenda._mdb.collection 'delayedQueues'
+        count = yield collection.count { name }
+        assert.equal count, 1
         yield return
+  ###
   describe '#getQueue', ->
     after ->
       Queues.delete 'default'
