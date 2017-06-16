@@ -22,4 +22,8 @@ module.exports =
   jobsCollection:
     description: 'Agenda database collection'
     type: 'string'
-    default: 'agenda'
+    default: 'delayedJobs'
+  queuesCollection:
+    description: 'Agenda database queues collection'
+    type: 'string'
+    default: 'delayedQueues'

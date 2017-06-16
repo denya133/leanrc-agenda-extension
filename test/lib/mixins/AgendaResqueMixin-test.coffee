@@ -46,7 +46,42 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         resque.initializeNotifier KEY
         resque.onRegister()
-        assert.instanceOf resque[TestResque.instanceVariables['_agenda'].pointer], Agenda
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        assert.instanceOf agenda, Agenda
+        assert.include agenda._name, require('os').hostname()
+        assert.equal agenda._maxConcurrency, 16
+        assert.equal agenda._defaultConcurrency, 16
+        assert.equal agenda._lockLimit, 16
+        assert.equal agenda._defaultLockLimit, 16
+        assert.equal agenda._defaultLockLifetime, 5000
+        yield return
+  describe '#onRemove', ->
+    facade = null
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_002'
+    after = -> facade?.remove?()
+    it 'should run on-remove flow', ->
+      co ->
+        facade = LeanRC::Facade.getInstance KEY
+        class Test extends LeanRC
+          @inheritProtected()
+          @include AgendaExtension
+          @root "#{__dirname}/config/root"
+        Test.initialize()
+        class TestResque extends LeanRC::Resque
+          @inheritProtected()
+          @include Test::AgendaResqueMixin
+          @module Test
+        TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
+        resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
+        resque.initializeNotifier KEY
+        resque.onRegister()
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        spyStop = sinon.spy agenda, 'stop'
+        resque.onRemove()
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        assert.isTrue spyStop.called
         yield return
   ###
   describe '#ensureQueue', ->

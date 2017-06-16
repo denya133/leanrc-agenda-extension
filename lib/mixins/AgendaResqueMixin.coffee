@@ -55,29 +55,36 @@ module.exports = (Module)->
         default: (args...)->
           @super args...
           {dbAddress:address, jobsCollection:collection} = @configs
-          name = os.hostname + '-' + process.pid
-          @[ipoAgenda] = new Agenda()
-            .database address, collection ? 'delayedJobs'
-            .name name
-            .maxConcurrency 16
-            .defaultConcurrency 16
-            .lockLimit 16
-            .defaultLockLimit 16
-            .defaultLockLifetime 5000
-          @[ipoAgenda].start()
+          name = os.hostname() + '-' + process.pid
+          @[ipoAgenda] = Module::Promise.new (resolve, reject) ->
+            voAgenda = new Agenda()
+              .database address, collection ? 'delayedJobs'
+              .name name
+              .maxConcurrency 16
+              .defaultConcurrency 16
+              .lockLimit 16
+              .defaultLockLimit 16
+              .defaultLockLifetime 5000
+            voAgenda.on 'ready', ->
+              voAgenda.start()
+              resolve voAgenda
+            voAgenda.on 'error', (err) ->
+              reject err
+            return
           return
 
       @public onRemove: Function,
         default: (args...)->
           @super args...
-          @[ipoAgenda].stop()
+          @[ipoAgenda].then (aoAgenda) ->
+            aoAgenda.stop()
           return
 
       @public @async ensureQueue: Function,
         default: (name, concurrency = 1)->
           name = @fullQueueName name
-          {queuesCollection} = @getData()
-          voQueuesCollection = @[ipoAgenda]._db.collection queuesCollection ? 'delayedQueues'
+          {queuesCollection} = @configs
+          voQueuesCollection = (yield @[ipoAgenda])._collection.db.collection queuesCollection ? 'delayedQueues'
           if (queue = yield voQueuesCollection.findOne name: name)?
             queue.concurrency = concurrency
             yield voQueuesCollection.update {name}, queue
@@ -88,8 +95,8 @@ module.exports = (Module)->
       @public @async getQueue: Function,
         default: (name)->
           name = @fullQueueName name
-          {queuesCollection} = @getData()
-          voQueuesCollection = @[ipoAgenda]._db.collection queuesCollection ? 'delayedQueues'
+          {queuesCollection} = @configs
+          voQueuesCollection = (yield @[ipoAgenda])._collection.db.collection queuesCollection ? 'delayedQueues'
           if (queue = yield voQueuesCollection.findOne name: name)?
             {concurrency} = queue
             yield return {name, concurrency}
@@ -99,16 +106,16 @@ module.exports = (Module)->
       @public @async removeQueue: Function,
         default: (queueName)->
           queueName = @fullQueueName queueName
-          {queuesCollection} = @getData()
-          voQueuesCollection = @[ipoAgenda]._db.collection queuesCollection ? 'delayedQueues'
+          {queuesCollection} = @configs
+          voQueuesCollection = (yield @[ipoAgenda])._collection.db.collection queuesCollection ? 'delayedQueues'
           if (queue = yield voQueuesCollection.findOne name: queueName)?
             yield voQueuesCollection.remove queue._id
           yield return
 
       @public @async allQueues: Function,
         default: ->
-          {queuesCollection} = @getData()
-          voQueuesCollection = @[ipoAgenda]._db.collection queuesCollection ? 'delayedQueues'
+          {queuesCollection} = @configs
+          voQueuesCollection = (yield @[ipoAgenda])._collection.db.collection queuesCollection ? 'delayedQueues'
           result = for {name, concurrency} in yield voQueuesCollection.find()
             {name, concurrency}
           yield return result
@@ -117,7 +124,7 @@ module.exports = (Module)->
         default: (queueName, scriptName, data, delayUntil)->
           queueName = @fullQueueName queueName
           yield return Module::Promise.new (resolve, reject)->
-            job = @[ipoAgenda].create queueName, {scriptName, data}
+            job = (yield @[ipoAgenda]).create queueName, {scriptName, data}
             if delayUntil?
               job.schedule delayUntil
             else
@@ -132,7 +139,7 @@ module.exports = (Module)->
         default: (queueName, jobId)->
           queueName = @fullQueueName queueName
           yield return Module::Promise.new (resolve, reject)->
-            @[ipoAgenda].jobs {name: queueName, _id: jobId}, (err, [job] = [])->
+            (yield @[ipoAgenda]).jobs {name: queueName, _id: jobId}, (err, [job] = [])->
               if err
                 reject err
               else
@@ -172,7 +179,7 @@ module.exports = (Module)->
         default: (queueName, scriptName)->
           queueName = @fullQueueName queueName
           yield return Module::Promise.new (resolve, reject)->
-            @[ipoAgenda].jobs {name: queueName, data: {scriptName}}, (err, jobs)->
+            (yield @[ipoAgenda]).jobs {name: queueName, data: {scriptName}}, (err, jobs)->
               if err
                 reject err
               else
@@ -182,7 +189,7 @@ module.exports = (Module)->
         default: (queueName, scriptName)->
           queueName = @fullQueueName queueName
           yield return Module::Promise.new (resolve, reject)->
-            @[ipoAgenda].jobs
+            (yield @[ipoAgenda]).jobs
               name: queueName
               status: $in: ['scheduled', 'queued']
               data: {scriptName}
@@ -196,7 +203,7 @@ module.exports = (Module)->
         default: (queueName, scriptName)->
           queueName = @fullQueueName queueName
           yield return Module::Promise.new (resolve, reject)->
-            @[ipoAgenda].jobs
+            (yield @[ipoAgenda]).jobs
               name: queueName
               status: 'running'
               data: {scriptName}
@@ -210,7 +217,7 @@ module.exports = (Module)->
         default: (queueName, scriptName)->
           queueName = @fullQueueName queueName
           yield return Module::Promise.new (resolve, reject)->
-            @[ipoAgenda].jobs
+            (yield @[ipoAgenda]).jobs
               name: queueName
               status: 'completed'
               data: {scriptName}
@@ -224,7 +231,7 @@ module.exports = (Module)->
         default: (queueName, scriptName)->
           queueName = @fullQueueName queueName
           yield return Module::Promise.new (resolve, reject)->
-            @[ipoAgenda].jobs
+            (yield @[ipoAgenda]).jobs
               name: queueName
               status: 'failed'
               data: {scriptName}
