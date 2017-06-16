@@ -180,13 +180,19 @@ module.exports = (Module)->
           yield return
 
       @public @async allJobs: Function,
-        default: (queueName, scriptName)->
+        default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
+          voAgenda = yield @[ipoAgenda]
           yield return Module::Promise.new (resolve, reject)->
-            (yield @[ipoAgenda]).jobs {name: queueName, data: {scriptName}}, (err, jobs)->
-              if err
+            vhQuery = name: queueName
+            if scriptName?
+              vhQuery['data.scriptName'] = scriptName
+            voAgenda.jobs vhQuery, (err, jobs)->
+              if err?
                 reject err
               else
+                unless options.native
+                  jobs = jobs.map (job) -> job.attrs
                 resolve jobs ? []
 
       @public @async pendingJobs: Function,

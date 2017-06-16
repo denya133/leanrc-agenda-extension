@@ -449,18 +449,19 @@ describe 'AgendaResqueMixin', ->
         assert.equal job.lastModifiedBy, agenda._name
         assert.isDefined job.failedAt
         yield return
-  ###
   describe '#allJobs', ->
-    ids = []
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_011'
     after ->
-      for id in ids
-        if id? and (try db._jobs.document id)
-          db._jobs.remove id
-      Queues.delete 'default'
-      Queues.delete 'test_test_queue_1'
-      Queues.delete 'test_test_queue_2'
+      co ->
+        yield clearTempQueues agenda, queueNames
+        facade?.remove?()
+        yield return
     it 'should list all jobs', ->
       co ->
+        facade = LeanRC::Facade.getInstance KEY
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
@@ -471,24 +472,30 @@ describe 'AgendaResqueMixin', ->
           @include Test::AgendaResqueMixin
           @module Test
         TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
-        resque.onRegister()
-        resque.ensureQueue 'TEST_QUEUE_1', 1
-        resque.ensureQueue 'TEST_QUEUE_2', 1
+        facade.registerProxy resque
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
+        queueNames.push name
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_2', 1
+        queueNames.push name
         DATA = data: 'data'
         DATE = new Date Date.now() + 3600000
-        ids.push yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_2', DATA, DATE
-        ids.push yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
-        ids.push jobId = yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_2', DATA, DATE
-        ids.push yield resque.pushJob 'TEST_QUEUE_2', 'TEST_SCRIPT_1', DATA, DATE
-        ids.push yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_2', DATA, DATE
-        ids.push yield resque.pushJob 'TEST_QUEUE_2', 'TEST_SCRIPT_1', DATA, DATE
+        yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_2', DATA, DATE
+        yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
+        jobId = yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_2', DATA, DATE
+        yield resque.pushJob 'TEST_QUEUE_2', 'TEST_SCRIPT_1', DATA, DATE
+        yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_2', DATA, DATE
+        yield resque.pushJob 'TEST_QUEUE_2', 'TEST_SCRIPT_1', DATA, DATE
         yield resque.deleteJob 'TEST_QUEUE_1', jobId
         jobs = yield resque.allJobs 'TEST_QUEUE_1'
         assert.lengthOf jobs, 3
         jobs = yield resque.allJobs 'TEST_QUEUE_1', 'TEST_SCRIPT_2'
         assert.lengthOf jobs, 2
         yield return
+  ###
   describe '#pendingJobs', ->
     ids = []
     after ->
