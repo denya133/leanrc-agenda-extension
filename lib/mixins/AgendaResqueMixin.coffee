@@ -115,9 +115,10 @@ module.exports = (Module)->
         default: ->
           {queuesCollection} = @configs
           voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
-          result = for {name, concurrency} in yield voQueuesCollection.find()
-            {name, concurrency}
-          yield return result
+          queues = yield voQueuesCollection.find {}
+          queues = yield queues.toArray()
+          queues = queues.map ({ name, concurrency }) -> { name, concurrency }
+          yield return queues
 
       @public @async pushJob: Function,
         default: (queueName, scriptName, data, delayUntil)->

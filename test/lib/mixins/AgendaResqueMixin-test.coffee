@@ -135,12 +135,13 @@ describe 'AgendaResqueMixin', ->
     queueNames = []
     KEY = 'TEST_AGENDA_RESQUE_MIXIN_004'
     after ->
-      collection = agenda?._mdb.collection 'delayedQueues'
-      if collection?
-        for name in queueNames
-          yield collection.deleteOne { name }
-      facade?.remove?()
-      yield return
+      co ->
+        collection = agenda?._mdb.collection 'delayedQueues'
+        if collection?
+          for name in queueNames
+            yield collection.deleteOne { name }
+        facade?.remove?()
+        yield return
     it 'should get queue', ->
       co ->
         facade = LeanRC::Facade.getInstance KEY
@@ -171,12 +172,13 @@ describe 'AgendaResqueMixin', ->
     queueNames = []
     KEY = 'TEST_AGENDA_RESQUE_MIXIN_005'
     after ->
-      collection = agenda?._mdb.collection 'delayedQueues'
-      if collection?
-        for name in queueNames
-          yield collection.deleteOne { name }
-      facade?.remove?()
-      yield return
+      co ->
+        collection = agenda?._mdb.collection 'delayedQueues'
+        if collection?
+          for name in queueNames
+            yield collection.deleteOne { name }
+        facade?.remove?()
+        yield return
     it 'should remove queue', ->
       co ->
         facade = LeanRC::Facade.getInstance KEY
@@ -203,18 +205,22 @@ describe 'AgendaResqueMixin', ->
         queue = yield resque.getQueue 'TEST_QUEUE'
         assert.isUndefined queue
         yield return
-  ###
   describe '#allQueues', ->
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_006'
     after ->
-      Queues.delete 'default'
-      Queues.delete 'test_test_queue_1'
-      Queues.delete 'test_test_queue_2'
-      Queues.delete 'test_test_queue_3'
-      Queues.delete 'test_test_queue_4'
-      Queues.delete 'test_test_queue_5'
-      Queues.delete 'test_test_queue_6'
+      co ->
+        collection = agenda?._mdb.collection 'delayedQueues'
+        if collection?
+          for name in queueNames
+            yield collection.deleteOne { name }
+        facade?.remove?()
+        yield return
     it 'should get all queues', ->
       co ->
+        facade = LeanRC::Facade.getInstance KEY
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
@@ -225,29 +231,39 @@ describe 'AgendaResqueMixin', ->
           @include Test::AgendaResqueMixin
           @module Test
         TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
-        resque.onRegister()
-        resque.ensureQueue 'TEST_QUEUE_1', 1
-        resque.ensureQueue 'TEST_QUEUE_2', 2
-        resque.ensureQueue 'TEST_QUEUE_3', 3
-        resque.ensureQueue 'TEST_QUEUE_4', 4
-        resque.ensureQueue 'TEST_QUEUE_5', 5
-        resque.ensureQueue 'TEST_QUEUE_6', 6
+        facade.registerProxy resque
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
+        queueNames.push name
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_2', 2
+        queueNames.push name
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_3', 3
+        queueNames.push name
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_4', 4
+        queueNames.push name
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_5', 5
+        queueNames.push name
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_6', 6
+        queueNames.push name
         queues = yield resque.allQueues()
         assert.includeDeepMembers queues, [
-          name: 'test_test_queue_1', concurrency: 1
+          name: 'Test|>TEST_QUEUE_1', concurrency: 1
         ,
-          name: 'test_test_queue_2', concurrency: 2
+          name: 'Test|>TEST_QUEUE_2', concurrency: 2
         ,
-          name: 'test_test_queue_3', concurrency: 3
+          name: 'Test|>TEST_QUEUE_3', concurrency: 3
         ,
-          name: 'test_test_queue_4', concurrency: 4
+          name: 'Test|>TEST_QUEUE_4', concurrency: 4
         ,
-          name: 'test_test_queue_5', concurrency: 5
+          name: 'Test|>TEST_QUEUE_5', concurrency: 5
         ,
-          name: 'test_test_queue_6', concurrency: 6
+          name: 'Test|>TEST_QUEUE_6', concurrency: 6
         ]
         yield return
+  ###
   describe '#pushJob', ->
     jobId = null
     after ->
