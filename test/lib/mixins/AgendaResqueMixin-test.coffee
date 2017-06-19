@@ -1,13 +1,19 @@
 { expect, assert } = require 'chai'
 sinon = require 'sinon'
 _ = require 'lodash'
+EventEmitter = require 'events'
 Agenda = require 'agenda'
 LeanRC = require 'LeanRC'
 AgendaExtension = require.main.require 'lib'
 { co } = LeanRC::Utils
 
-defineJob = (aoAgenda, asName, anDuration = 250) ->
-  aoAgenda?.define asName, (job, done) -> setTimeout done, anDuration
+defineJob = (aoAgenda, asName, anDuration = 250, aoTrigger) ->
+  aoAgenda?.define asName, (job, done) ->
+    aoTrigger?.emit? 'started', job
+    setTimeout ->
+      aoTrigger?.emit? 'complete', job
+      done()
+    , anDuration
   return
 
 clearTempQueues = (aoAgenda, alQueues) ->
@@ -557,9 +563,10 @@ describe 'AgendaResqueMixin', ->
         yield clearTempQueues agenda, queueNames
         facade?.remove?()
         yield return
-    it 'should list runnning jobs', ->
+    it 'should list running jobs', ->
       co ->
         facade = LeanRC::Facade.getInstance KEY
+        trigger = new EventEmitter
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
@@ -575,38 +582,46 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
-        defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 250
-        defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450
+        defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 2000, trigger
+        defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450, trigger
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
         { name } = yield resque.ensureQueue 'TEST_QUEUE_2', 1
         queueNames.push name
         DATA = data: 'data'
-        DATE = new Date()
+        DATE = new Date Date.now() + 600000
         yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
         yield resque.pushJob 'TEST_QUEUE_2', 'TEST_SCRIPT_1', DATA, DATE
         jobId = yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
         yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_2', DATA, DATE
         job = yield resque.getJob 'TEST_QUEUE_1', jobId, native: yes
-        yield LeanRC::Promise.new (resolve, reject) ->
-          job.run (err, item) -> if err? then reject err else resolve item
+        promise = LeanRC::Promise.new (resolve, reject) ->
+          trigger.once 'started', (processingJob) ->
+            if processingJob._id is job._id
+              resolve()
+            return
+        job.run()
+        yield promise
+        job = yield resque.getJob 'TEST_QUEUE_1', jobId, native: yes
         jobs = yield resque.progressJobs 'TEST_QUEUE_1'
         assert.lengthOf jobs, 1
         jobs = yield resque.progressJobs 'TEST_QUEUE_1', 'TEST_SCRIPT_2'
         assert.lengthOf jobs, 0
         yield return
-  ###
   describe '#completedJobs', ->
-    ids = []
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_012'
     after ->
-      for id in ids
-        if id? and (try db._jobs.document id)
-          db._jobs.remove id
-      Queues.delete 'default'
-      Queues.delete 'test_test_queue_1'
-      Queues.delete 'test_test_queue_2'
+      co ->
+        yield clearTempQueues agenda, queueNames
+        facade?.remove?()
+        yield return
     it 'should list complete jobs', ->
       co ->
+        facade = LeanRC::Facade.getInstance KEY
+        trigger = new EventEmitter
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
@@ -617,23 +632,35 @@ describe 'AgendaResqueMixin', ->
           @include Test::AgendaResqueMixin
           @module Test
         TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
-        resque.onRegister()
-        resque.ensureQueue 'TEST_QUEUE_1', 1
-        resque.ensureQueue 'TEST_QUEUE_2', 1
+        facade.registerProxy resque
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 250, trigger
+        defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450, trigger
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
+        queueNames.push name
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_2', 1
+        queueNames.push name
         DATA = data: 'data'
-        DATE = new Date()
-        ids.push yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
-        ids.push yield resque.pushJob 'TEST_QUEUE_2', 'TEST_SCRIPT_1', DATA, DATE
-        ids.push jobId = yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
-        ids.push yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_2', DATA, DATE
-        job = yield resque.getJob 'TEST_QUEUE_1', jobId
-        db._jobs.update job._key, status: 'complete'
+        DATE = new Date Date.now() + 600000
+        yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
+        yield resque.pushJob 'TEST_QUEUE_2', 'TEST_SCRIPT_1', DATA, DATE
+        jobId = yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
+        yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_2', DATA, DATE
+        job = yield resque.getJob 'TEST_QUEUE_1', jobId, native: yes
+        promise = LeanRC::Promise.new (resolve, reject) ->
+          trigger.once 'complete', resolve
+        yield LeanRC::Promise.new (resolve, reject) ->
+          job.run (err, item) -> if err? then reject err else resolve item
+        completeJob = yield promise
         jobs = yield resque.completedJobs 'TEST_QUEUE_1'
         assert.lengthOf jobs, 1
         jobs = yield resque.completedJobs 'TEST_QUEUE_1', 'TEST_SCRIPT_2'
         assert.lengthOf jobs, 0
         yield return
+  ###
   describe '#failedJobs', ->
     ids = []
     after ->

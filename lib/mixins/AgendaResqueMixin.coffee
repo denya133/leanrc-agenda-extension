@@ -203,6 +203,7 @@ module.exports = (Module)->
             vhQuery =
               name: queueName
               lastRunAt: $exists: no
+              lastFinishedAt: $exists: no
               failedAt: $exists: no
             if scriptName?
               vhQuery['data.scriptName'] = scriptName
@@ -222,7 +223,7 @@ module.exports = (Module)->
             vhQuery =
               name: queueName
               lastRunAt: $exists: yes
-              finishedRunAt: $exists: no
+              lastFinishedAt: $exists: no
               failedAt: $exists: no
             if scriptName?
               vhQuery['data.scriptName'] = scriptName
@@ -235,17 +236,23 @@ module.exports = (Module)->
                 resolve jobs ? []
 
       @public @async completedJobs: Function,
-        default: (queueName, scriptName)->
+        default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
+          voAgenda = yield @[ipoAgenda]
           yield return Module::Promise.new (resolve, reject)->
-            (yield @[ipoAgenda]).jobs
+            vhQuery =
               name: queueName
-              status: 'completed'
-              data: {scriptName}
-            , (err, jobs)->
+              lastRunAt: $exists: yes
+              lastFinishedAt: $exists: yes
+              failedAt: $exists: no
+            if scriptName?
+              vhQuery['data.scriptName'] = scriptName
+            voAgenda.jobs vhQuery, (err, jobs)->
               if err
                 reject err
               else
+                unless options.native
+                  jobs = jobs.map (job) -> job.attrs
                 resolve jobs ? []
 
       @public @async failedJobs: Function,
