@@ -82,7 +82,7 @@ module.exports = (Module)->
           @super args...
           {dbAddress:address, jobsCollection:collection} = @configs
           @setViewComponent new EventEmitter()
-          @[ipoResque] = @facade.retriveProxy Module::RESQUE
+          @[ipoResque] = @facade.retrieveProxy Module::RESQUE
           name = "#{os.hostname()}-#{process.pid}"
           self = @
           @[ipoAgenda] = Module::Promise.new (resolve, reject) ->
@@ -136,7 +136,8 @@ module.exports = (Module)->
       @public onRemove: Function,
         default: (args...)->
           @super args...
-          @[ipoAgenda]?.then (aoAgenda) -> aoAgenda.stop()
+          co => (yield @[ipoAgenda]).stop()
+          # @[ipoAgenda]?.then (aoAgenda) -> aoAgenda.stop()
           return
 
 

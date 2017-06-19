@@ -256,6 +256,57 @@ describe 'AgendaExecutorMixin', ->
         assert.equal executor.fullQueueName('TEST_QUEUE_1'), 'Test|>TEST_QUEUE_1'
         assert.equal executor.fullQueueName('TEST_QUEUE_2'), 'Test|>TEST_QUEUE_2'
         yield return
+  describe '#onRegister', ->
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_EXECUTOR_004'
+    afterEach ->
+      co ->
+        yield clearTempQueues agenda, queueNames
+        facade?.remove?()
+        yield return
+    it 'should setup executor on register', ->
+      co ->
+        facade = LeanRC::Facade.getInstance KEY
+        trigger = new EventEmitter
+        class Test extends LeanRC
+          @inheritProtected()
+          @include AgendaExtension
+          @root "#{__dirname}/config/root"
+        Test.initialize()
+        class TestResque extends LeanRC::Resque
+          @inheritProtected()
+          @include Test::AgendaResqueMixin
+          @module Test
+        TestResque.initialize()
+        class TestExecutor extends LeanRC::Mediator
+          @inheritProtected()
+          @include Test::AgendaExecutorMixin
+          @module Test
+        TestExecutor.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
+        facade.registerProxy TestResque.new LeanRC::RESQUE
+        resque = facade.retrieveProxy LeanRC::RESQUE
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
+        queueNames.push name
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_2', 1
+        queueNames.push name
+        executor = TestExecutor.new LeanRC::MEM_RESQUE_EXEC
+        executor.initializeNotifier KEY
+        executor.onRegister()
+        agenda = yield executor[TestExecutor.instanceVariables['_agenda'].pointer]
+        assert.instanceOf agenda, Agenda
+        assert.include agenda._name, require('os').hostname()
+        assert.equal agenda._maxConcurrency, 16
+        assert.equal agenda._defaultConcurrency, 16
+        assert.equal agenda._lockLimit, 16
+        assert.equal agenda._defaultLockLimit, 16
+        assert.equal agenda._defaultLockLifetime, 5000
+        assert.property agenda._definitions, resque.fullQueueName 'TEST_QUEUE_1'
+        assert.property agenda._definitions, resque.fullQueueName 'TEST_QUEUE_2'
+        yield return
   ###
   describe '#stop', ->
     facade = null
