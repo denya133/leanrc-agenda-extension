@@ -38,7 +38,7 @@ Extension = (BaseClass) ->
   class AgendaExtension extends BaseClass
     @inheritProtected()
 
-    require('./mixins/AgendaResqueMixin') @Module # needs testing
+    require('./mixins/AgendaResqueMixin') @Module
     require('./mediators/AgendaExecutor') @Module # needs testing
   AgendaExtension.initializeMixin()
 

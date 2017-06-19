@@ -256,17 +256,21 @@ module.exports = (Module)->
                 resolve jobs ? []
 
       @public @async failedJobs: Function,
-        default: (queueName, scriptName)->
+        default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
+          voAgenda = yield @[ipoAgenda]
           yield return Module::Promise.new (resolve, reject)->
-            (yield @[ipoAgenda]).jobs
+            vhQuery =
               name: queueName
-              status: 'failed'
-              data: {scriptName}
-            , (err, jobs)->
+              failedAt: $exists: yes
+            if scriptName?
+              vhQuery['data.scriptName'] = scriptName
+            voAgenda.jobs vhQuery, (err, jobs)->
               if err
                 reject err
               else
+                unless options.native
+                  jobs = jobs.map (job) -> job.attrs
                 resolve jobs ? []
 
 
