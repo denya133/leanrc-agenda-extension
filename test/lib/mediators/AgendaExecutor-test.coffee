@@ -2,9 +2,29 @@ EventEmitter  = require 'events'
 { expect, assert } = require 'chai'
 sinon = require 'sinon'
 _ = require 'lodash'
+Agenda = require 'agenda'
 LeanRC = require 'LeanRC'
 AgendaExtension = require.main.require 'lib'
 { co } = LeanRC::Utils
+
+defineJob = (aoAgenda, asName, anDuration = 250, aoTrigger) ->
+  aoAgenda?.define asName, (job, done) ->
+    aoTrigger?.emit? 'started', job
+    setTimeout ->
+      aoTrigger?.emit? 'complete', job
+      done()
+    , anDuration
+  return
+
+clearTempQueues = (aoAgenda, alQueues) ->
+  if aoAgenda?
+    jobsCollection = aoAgenda._mdb.collection 'delayedJobs'
+    queuesCollection = aoAgenda._mdb.collection 'delayedQueues'
+    if queuesCollection?
+      for name in alQueues
+        yield jobsCollection.deleteMany { name }
+        yield queuesCollection.deleteOne { name }
+  yield return
 
 describe 'AgendaExecutor', ->
   describe '.new', ->
@@ -35,12 +55,61 @@ describe 'AgendaExecutor', ->
           LeanRC::JOB_RESULT
         ]
         yield return
+  describe '#ensureIndexes', ->
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_EXECUTOR_001'
+    afterEach ->
+      co ->
+        yield clearTempQueues agenda, queueNames
+        facade?.remove?()
+        yield return
+    it 'should start resque', ->
+      co ->
+        facade = LeanRC::Facade.getInstance KEY
+        trigger = new EventEmitter
+        class Test extends LeanRC
+          @inheritProtected()
+          @include AgendaExtension
+          @root "#{__dirname}/config/root"
+        Test.initialize()
+        class TestResque extends LeanRC::Resque
+          @inheritProtected()
+          @include Test::AgendaResqueMixin
+          @module Test
+        TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
+        {dbAddress:address, jobsCollection:collection, queuesCollection} = configs
+        agenda = yield LeanRC::Promise.new (resolve, reject) ->
+          voAgenda = new Agenda()
+            .database address, collection ? 'delayedJobs'
+            .name name
+            .maxConcurrency 16
+            .defaultConcurrency 16
+            .lockLimit 16
+            .defaultLockLimit 16
+            .defaultLockLifetime 5000
+          voAgenda.on 'ready', -> resolve voAgenda
+          voAgenda.on 'error', (err) -> reject err
+          return
+        facade.registerProxy TestResque.new LeanRC::RESQUE
+        resque = facade.retrieveProxy LeanRC::RESQUE
+        { name } = yield resque.create 'TEST_AGENDA_QUEUE', 4
+        queueNames.push name
+        executor = Test::AgendaExecutor.new LeanRC::MEM_RESQUE_EXEC
+        executor.initializeNotifier KEY
+        yield executor.ensureIndexes agenda
+        voQueuesCollection = agenda._mdb.collection queuesCollection ? 'delayedQueues'
+        assert.isTrue yield voQueuesCollection.indexExists [ 'name_1' ]
+        yield return
   ###
   describe '#stop', ->
     facade = null
     agenda = null
     queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_015'
+    KEY = 'TEST_AGENDA_EXECUTOR_015'
     after ->
       co ->
         yield clearTempQueues agenda, queueNames
@@ -66,7 +135,7 @@ describe 'AgendaExecutor', ->
     facade = null
     agenda = null
     queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_015'
+    KEY = 'TEST_AGENDA_EXECUTOR_015'
     after ->
       co ->
         yield clearTempQueues agenda, queueNames
@@ -92,7 +161,7 @@ describe 'AgendaExecutor', ->
     facade = null
     agenda = null
     queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_015'
+    KEY = 'TEST_AGENDA_EXECUTOR_015'
     afterEach ->
       co ->
         yield clearTempQueues agenda, queueNames
@@ -181,7 +250,7 @@ describe 'AgendaExecutor', ->
     facade = null
     agenda = null
     queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_015'
+    KEY = 'TEST_AGENDA_EXECUTOR_015'
     after ->
       co ->
         yield clearTempQueues agenda, queueNames
@@ -237,7 +306,7 @@ describe 'AgendaExecutor', ->
     facade = null
     agenda = null
     queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_015'
+    KEY = 'TEST_AGENDA_EXECUTOR_015'
     after ->
       co ->
         yield clearTempQueues agenda, queueNames
@@ -293,7 +362,7 @@ describe 'AgendaExecutor', ->
     facade = null
     agenda = null
     queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_015'
+    KEY = 'TEST_AGENDA_EXECUTOR_015'
     after ->
       co ->
         yield clearTempQueues agenda, queueNames
@@ -356,7 +425,7 @@ describe 'AgendaExecutor', ->
     facade = null
     agenda = null
     queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_015'
+    KEY = 'TEST_AGENDA_EXECUTOR_015'
     after ->
       co ->
         yield clearTempQueues agenda, queueNames
@@ -421,7 +490,7 @@ describe 'AgendaExecutor', ->
     facade = null
     agenda = null
     queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_015'
+    KEY = 'TEST_AGENDA_EXECUTOR_015'
     after ->
       co ->
         yield clearTempQueues agenda, queueNames
@@ -483,7 +552,7 @@ describe 'AgendaExecutor', ->
     facade = null
     agenda = null
     queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_015'
+    KEY = 'TEST_AGENDA_EXECUTOR_015'
     afterEach ->
       co ->
         yield clearTempQueues agenda, queueNames
@@ -570,7 +639,7 @@ describe 'AgendaExecutor', ->
     facade = null
     agenda = null
     queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_015'
+    KEY = 'TEST_AGENDA_EXECUTOR_015'
     after ->
       co ->
         yield clearTempQueues agenda, queueNames

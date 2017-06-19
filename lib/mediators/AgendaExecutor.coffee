@@ -82,38 +82,51 @@ module.exports = (Module)->
         {dbAddress:address, jobsCollection:collection} = @configs
         @setViewComponent new EventEmitter()
         @[ipoResque] = @facade.retriveProxy Module::RESQUE
-        name = os.hostname + '-' + process.pid
-        @[ipoAgenda] = new Agenda()
-          .database address, collection ? 'delayedJobs'
-          .name name
-          .maxConcurrency 16
-          .defaultConcurrency 16
-          .lockLimit 16
-          .defaultLockLimit 16
-          .defaultLockLifetime 5000
-        @ensureIndexes()
-        @defineProcessors()
-        @[ipoAgenda].start()
+        name = "#{os.hostname()}-#{process.pid}"
+        self = @
+        @[ipoAgenda] = Module::Promise.new (resolve, reject) ->
+          voAgenda = new Agenda()
+            .database address, collection ? 'delayedJobs'
+            .name name
+            .maxConcurrency 16
+            .defaultConcurrency 16
+            .lockLimit 16
+            .defaultLockLimit 16
+            .defaultLockLifetime 5000
+          voAgenda.on 'ready', co.wrap ->
+            yield self.ensureIndexes voAgenda
+            yield self.defineProcessors voAgenda
+            voAgenda.start()
+            resolve voAgenda
+            yield return
+          voAgenda.on 'error', (err) ->
+            reject err
+          return
         return
 
     @public ensureIndexes: Function,
       args: []
       return: Module::NILL
-      default: ->
-        @[ipoAgenda]._db.ensureIndex 'name' # уточнить код. должен быть на коллекции 'delayedQueues'
-        return
+      default: (aoAgenda) ->
+        aoAgenda ?= @[ipoAgenda]
+        { queuesCollection } = @configs
+        co ->
+          voAgenda = yield aoAgenda
+          voQueuesCollection = voAgenda._mdb.collection queuesCollection ? 'delayedQueues'
+          yield voQueuesCollection.createIndex 'name'
+          yield return
 
     @public @async defineProcessors: Function,
       args: []
       return: Module::NILL
-      default: ->
+      default: (aoAgenda) ->
+        voAgenda = yield aoAgenda ? @[ipoAgenda]
         for {name, concurrency} in yield @[ipoResque].allQueues()
           [moduleName] = name.split '|>'
           if moduleName is @moduleName
-            @[ipoAgenda].define name, {concurrency}, co.wrap (job, done)=>
+            voAgenda.define name, {concurrency}, co.wrap (job, done)=>
               reverse = crypto.randomBytes 32
-              @getViewComponent().once reverse, (aoError)=>
-                done aoError
+              @getViewComponent().once reverse, (aoError) -> done aoError
               {scriptName, data} = job.attrs.data
               @sendNotification scriptName, data, reverse
           continue
@@ -122,7 +135,7 @@ module.exports = (Module)->
     @public onRemove: Function,
       default: (args...)->
         @super args...
-        @[ipoAgenda].stop()
+        @[ipoAgenda]?.then (aoAgenda) -> aoAgenda.stop()
         return
 
 
