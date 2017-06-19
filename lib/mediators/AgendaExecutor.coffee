@@ -58,7 +58,7 @@ module.exports = (Module)->
       default: (queueName)-> @[ipoResque].fullQueueName queueName
 
     ipoAgenda = @private agenda: Object
-    ipoResque = @private resqie: Module::ResqueInterface
+    ipoResque = @private resque: Module::ResqueInterface
 
     @public listNotificationInterests: Function,
       default: ->
