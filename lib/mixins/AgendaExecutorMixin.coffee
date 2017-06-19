@@ -137,7 +137,6 @@ module.exports = (Module)->
         default: (args...)->
           @super args...
           co => (yield @[ipoAgenda]).stop()
-          # @[ipoAgenda]?.then (aoAgenda) -> aoAgenda.stop()
           return
 
 
