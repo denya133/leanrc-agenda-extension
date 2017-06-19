@@ -26,7 +26,7 @@ clearTempQueues = (aoAgenda, alQueues) ->
         yield queuesCollection.deleteOne { name }
   yield return
 
-describe 'AgendaExecutor', ->
+describe 'AgendaExecutorMixin', ->
   describe '.new', ->
     it 'should create new Agenda resque executor', ->
       co ->
@@ -35,10 +35,15 @@ describe 'AgendaExecutor', ->
           @include AgendaExtension
           @root "#{__dirname}/config/root"
         Test.initialize()
+        class TestExecutor extends LeanRC::Mediator
+          @inheritProtected()
+          @include Test::AgendaExecutorMixin
+          @module Test
+        TestExecutor.initialize()
         executorName = 'TEST_AGENDA_EXECUTOR'
         viewComponent = { id: 'view-component' }
-        executor = Test::AgendaExecutor.new executorName, viewComponent
-        assert.instanceOf executor, Test::AgendaExecutor
+        executor = TestExecutor.new executorName, viewComponent
+        assert.instanceOf executor, TestExecutor
         yield return
   describe '#listNotificationInterests', ->
     it 'should check notification interests list', ->
@@ -48,9 +53,14 @@ describe 'AgendaExecutor', ->
           @include AgendaExtension
           @root "#{__dirname}/config/root"
         Test.initialize()
+        class TestExecutor extends LeanRC::Mediator
+          @inheritProtected()
+          @include Test::AgendaExecutorMixin
+          @module Test
+        TestExecutor.initialize()
         executorName = 'TEST_AGENDA_EXECUTOR'
         viewComponent = { id: 'view-component' }
-        executor = Test::AgendaExecutor.new executorName, viewComponent
+        executor = TestExecutor.new executorName, viewComponent
         assert.deepEqual executor.listNotificationInterests(), [
           LeanRC::JOB_RESULT
         ]
@@ -74,6 +84,11 @@ describe 'AgendaExecutor', ->
           @include AgendaExtension
           @root "#{__dirname}/config/root"
         Test.initialize()
+        class TestExecutor extends LeanRC::Mediator
+          @inheritProtected()
+          @include Test::AgendaExecutorMixin
+          @module Test
+        TestExecutor.initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
@@ -98,11 +113,72 @@ describe 'AgendaExecutor', ->
         resque = facade.retrieveProxy LeanRC::RESQUE
         { name } = yield resque.create 'TEST_AGENDA_QUEUE', 4
         queueNames.push name
-        executor = Test::AgendaExecutor.new LeanRC::MEM_RESQUE_EXEC
+        executor = TestExecutor.new LeanRC::MEM_RESQUE_EXEC
         executor.initializeNotifier KEY
         yield executor.ensureIndexes agenda
         voQueuesCollection = agenda._mdb.collection queuesCollection ? 'delayedQueues'
         assert.isTrue yield voQueuesCollection.indexExists [ 'name_1' ]
+        yield return
+  describe '#defineProcessors', ->
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_EXECUTOR_002'
+    afterEach ->
+      co ->
+        yield clearTempQueues agenda, queueNames
+        facade?.remove?()
+        yield return
+    it 'should start resque', ->
+      co ->
+        facade = LeanRC::Facade.getInstance KEY
+        trigger = new EventEmitter
+        class Test extends LeanRC
+          @inheritProtected()
+          @include AgendaExtension
+          @root "#{__dirname}/config/root"
+        Test.initialize()
+        class TestResque extends LeanRC::Resque
+          @inheritProtected()
+          @include Test::AgendaResqueMixin
+          @module Test
+        TestResque.initialize()
+        class TestExecutor extends LeanRC::Mediator
+          @inheritProtected()
+          @include Test::AgendaExecutorMixin
+          @module Test
+        TestExecutor.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
+        {dbAddress:address, jobsCollection:collection, queuesCollection} = configs
+        agenda = yield LeanRC::Promise.new (resolve, reject) ->
+          voAgenda = new Agenda()
+            .database address, collection ? 'delayedJobs'
+            .name name
+            .maxConcurrency 16
+            .defaultConcurrency 16
+            .lockLimit 16
+            .defaultLockLimit 16
+            .defaultLockLifetime 5000
+          voAgenda.on 'ready', -> resolve voAgenda
+          voAgenda.on 'error', (err) -> reject err
+          return
+        facade.registerProxy TestResque.new LeanRC::RESQUE
+        resque = facade.retrieveProxy LeanRC::RESQUE
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
+        queueNames.push name
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_2', 1
+        queueNames.push name
+        executor = TestExecutor.new LeanRC::MEM_RESQUE_EXEC
+        executor.initializeNotifier KEY
+        vpoResque = TestExecutor.instanceVariables['_resque'].pointer
+        executor[vpoResque] = resque
+        vpoAgenda = TestExecutor.instanceVariables['_agenda'].pointer
+        executor[vpoAgenda] = agenda
+        yield executor.ensureIndexes agenda
+        yield executor.defineProcessors agenda
+        assert.property agenda._definitions, resque.fullQueueName 'TEST_QUEUE_1'
+        assert.property agenda._definitions, resque.fullQueueName 'TEST_QUEUE_2'
         yield return
   ###
   describe '#stop', ->

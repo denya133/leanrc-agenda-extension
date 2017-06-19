@@ -3,6 +3,5 @@
 --check-leaks
 --growl
 test/lib/
-test/lib/mediators/
 test/lib/mixins/
 test/

@@ -39,7 +39,7 @@ Extension = (BaseClass) ->
     @inheritProtected()
 
     require('./mixins/AgendaResqueMixin') @Module
-    require('./mediators/AgendaExecutor') @Module # needs testing
+    require('./mixins/AgendaExecutorMixin') @Module # needs testing
   AgendaExtension.initializeMixin()
 
 sample = Extension LeanRC
