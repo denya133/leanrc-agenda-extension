@@ -6,6 +6,10 @@ LeanRC = require 'LeanRC'
 AgendaExtension = require.main.require 'lib'
 { co } = LeanRC::Utils
 
+defineJob = (aoAgenda, asName, anDuration = 250) ->
+  aoAgenda?.define asName, (job, done) -> setTimeout done, anDuration
+  return
+
 clearTempQueues = (aoAgenda, alQueues) ->
   if aoAgenda?
     jobsCollection = aoAgenda._mdb.collection 'delayedJobs'
@@ -495,18 +499,19 @@ describe 'AgendaResqueMixin', ->
         jobs = yield resque.allJobs 'TEST_QUEUE_1', 'TEST_SCRIPT_2'
         assert.lengthOf jobs, 2
         yield return
-  ###
   describe '#pendingJobs', ->
-    ids = []
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_RESQUE_MIXIN_012'
     after ->
-      for id in ids
-        if id? and (try db._jobs.document id)
-          db._jobs.remove id
-      Queues.delete 'default'
-      Queues.delete 'test_test_queue_1'
-      Queues.delete 'test_test_queue_2'
+      co ->
+        yield clearTempQueues agenda, queueNames
+        facade?.remove?()
+        yield return
     it 'should list pending jobs', ->
       co ->
+        facade = LeanRC::Facade.getInstance KEY
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
@@ -517,23 +522,32 @@ describe 'AgendaResqueMixin', ->
           @include Test::AgendaResqueMixin
           @module Test
         TestResque.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
-        resque.onRegister()
-        resque.ensureQueue 'TEST_QUEUE_1', 1
-        resque.ensureQueue 'TEST_QUEUE_2', 1
+        facade.registerProxy resque
+        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 250
+        defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
+        queueNames.push name
+        { name } = yield resque.ensureQueue 'TEST_QUEUE_2', 1
+        queueNames.push name
         DATA = data: 'data'
-        DATE = new Date()
-        ids.push yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
-        ids.push yield resque.pushJob 'TEST_QUEUE_2', 'TEST_SCRIPT_1', DATA, DATE
-        ids.push jobId = yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
-        ids.push yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_2', DATA, DATE
-        job = yield resque.getJob 'TEST_QUEUE_1', jobId
-        db._jobs.update job._key, status: 'running'
+        DATE = new Date Date.now() + 600000
+        yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
+        yield resque.pushJob 'TEST_QUEUE_2', 'TEST_SCRIPT_1', DATA, DATE
+        jobId = yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_1', DATA, DATE
+        yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT_2', DATA, DATE
+        job = yield resque.getJob 'TEST_QUEUE_1', jobId, native: yes
+        job1 = yield LeanRC::Promise.new (resolve, reject) ->
+          job.run (err, item) -> if err? then reject err else resolve item
         jobs = yield resque.pendingJobs 'TEST_QUEUE_1'
         assert.lengthOf jobs, 2
         jobs = yield resque.pendingJobs 'TEST_QUEUE_1', 'TEST_SCRIPT_2'
         assert.lengthOf jobs, 1
         yield return
+  ###
   describe '#progressJobs', ->
     ids = []
     after ->
