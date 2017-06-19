@@ -150,7 +150,7 @@ describe 'AgendaExecutorMixin', ->
         TestExecutor.initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
-        {dbAddress:address, jobsCollection:collection, queuesCollection} = configs
+        {dbAddress:address, jobsCollection:collection} = configs
         agenda = yield LeanRC::Promise.new (resolve, reject) ->
           voAgenda = new Agenda()
             .database address, collection ? 'delayedJobs'
@@ -215,6 +215,46 @@ describe 'AgendaExecutorMixin', ->
         executor.handleNotification Test::Notification.new Test::JOB_RESULT, 'TEST_BODY', 'TEST_TYPE'
         result = yield promise
         assert.equal result, 'TEST_BODY'
+        yield return
+  describe '#fullQueueName', ->
+    facade = null
+    agenda = null
+    queueNames = []
+    KEY = 'TEST_AGENDA_EXECUTOR_003'
+    afterEach ->
+      co ->
+        yield clearTempQueues agenda, queueNames
+        facade?.remove?()
+        yield return
+    it 'should get queue full name', ->
+      co ->
+        facade = LeanRC::Facade.getInstance KEY
+        trigger = new EventEmitter
+        class Test extends LeanRC
+          @inheritProtected()
+          @include AgendaExtension
+          @root "#{__dirname}/config/root"
+        Test.initialize()
+        class TestResque extends LeanRC::Resque
+          @inheritProtected()
+          @include Test::AgendaResqueMixin
+          @module Test
+        TestResque.initialize()
+        class TestExecutor extends LeanRC::Mediator
+          @inheritProtected()
+          @include Test::AgendaExecutorMixin
+          @module Test
+        TestExecutor.initialize()
+        configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
+        facade.registerProxy configs
+        facade.registerProxy TestResque.new LeanRC::RESQUE
+        resque = facade.retrieveProxy LeanRC::RESQUE
+        executor = TestExecutor.new LeanRC::MEM_RESQUE_EXEC
+        executor.initializeNotifier KEY
+        vpoResque = TestExecutor.instanceVariables['_resque'].pointer
+        executor[vpoResque] = resque
+        assert.equal executor.fullQueueName('TEST_QUEUE_1'), 'Test|>TEST_QUEUE_1'
+        assert.equal executor.fullQueueName('TEST_QUEUE_2'), 'Test|>TEST_QUEUE_2'
         yield return
   ###
   describe '#stop', ->
