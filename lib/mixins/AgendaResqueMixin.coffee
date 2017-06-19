@@ -66,7 +66,6 @@ module.exports = (Module)->
               .defaultLockLimit 16
               .defaultLockLifetime 5000
             voAgenda.on 'ready', ->
-              voAgenda.start()
               resolve voAgenda
             voAgenda.on 'error', (err) ->
               reject err

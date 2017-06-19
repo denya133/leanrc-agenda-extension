@@ -67,6 +67,7 @@ describe 'AgendaResqueMixin', ->
         resque.initializeNotifier KEY
         resque.onRegister()
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         assert.instanceOf agenda, Agenda
         assert.include agenda._name, require('os').hostname()
         assert.equal agenda._maxConcurrency, 16
@@ -98,9 +99,11 @@ describe 'AgendaResqueMixin', ->
         resque.initializeNotifier KEY
         resque.onRegister()
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         spyStop = sinon.spy agenda, 'stop'
         resque.onRemove()
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         assert.isTrue spyStop.called
         yield return
   describe '#ensureQueue', ->
@@ -131,6 +134,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         { name, concurrency } = yield resque.ensureQueue 'TEST_QUEUE', 5
         queueNames.push name
         assert.equal name, 'Test|>TEST_QUEUE'
@@ -174,6 +178,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         yield resque.ensureQueue 'TEST_QUEUE', 5
         queue = yield resque.getQueue 'TEST_QUEUE'
         queueNames.push queue.name
@@ -208,6 +213,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE', 5
         queueNames.push name
         queue = yield resque.getQueue 'TEST_QUEUE'
@@ -244,6 +250,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
         { name } = yield resque.ensureQueue 'TEST_QUEUE_2', 2
@@ -299,6 +306,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
         DATA = data: 'data'
@@ -343,6 +351,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
         DATA = data: 'data'
@@ -386,6 +395,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
         DATA = data: 'data'
@@ -431,6 +441,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
         DATA = data: 'data'
@@ -487,6 +498,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
         { name } = yield resque.ensureQueue 'TEST_QUEUE_2', 1
@@ -533,6 +545,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 250
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
@@ -582,6 +595,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 2000, trigger
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450, trigger
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
@@ -637,6 +651,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 250, trigger
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450, trigger
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
@@ -689,6 +704,7 @@ describe 'AgendaResqueMixin', ->
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda.start()
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 250, trigger
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450, trigger
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1

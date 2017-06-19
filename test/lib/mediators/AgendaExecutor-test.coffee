@@ -20,17 +20,7 @@ describe 'AgendaExecutor', ->
         executor = Test::AgendaExecutor.new executorName, viewComponent
         assert.instanceOf executor, Test::AgendaExecutor
         yield return
-  ###
   describe '#listNotificationInterests', ->
-    facade = null
-    agenda = null
-    queueNames = []
-    KEY = 'TEST_AGENDA_RESQUE_MIXIN_015'
-    after ->
-      co ->
-        yield clearTempQueues agenda, queueNames
-        facade?.remove?()
-        yield return
     it 'should check notification interests list', ->
       co ->
         class Test extends LeanRC
@@ -42,9 +32,10 @@ describe 'AgendaExecutor', ->
         viewComponent = { id: 'view-component' }
         executor = Test::AgendaExecutor.new executorName, viewComponent
         assert.deepEqual executor.listNotificationInterests(), [
-          LeanRC::JOB_RESULT, LeanRC::START_RESQUE
+          LeanRC::JOB_RESULT
         ]
         yield return
+  ###
   describe '#stop', ->
     facade = null
     agenda = null
