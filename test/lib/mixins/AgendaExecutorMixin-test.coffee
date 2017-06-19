@@ -180,6 +180,42 @@ describe 'AgendaExecutorMixin', ->
         assert.property agenda._definitions, resque.fullQueueName 'TEST_QUEUE_1'
         assert.property agenda._definitions, resque.fullQueueName 'TEST_QUEUE_2'
         yield return
+  describe '#handleNotification', ->
+    it 'should handle notification', ->
+      co ->
+        class Test extends LeanRC
+          @inheritProtected()
+          @include AgendaExtension
+          @root "#{__dirname}/config/root"
+        Test.initialize()
+        class TestExecutor extends LeanRC::Mediator
+          @inheritProtected()
+          @include Test::AgendaExecutorMixin
+          @module Test
+        TestExecutor.initialize()
+        executorName = 'TEST_AGENDA_EXECUTOR'
+        viewComponent = new EventEmitter
+        executor = TestExecutor.new executorName, viewComponent
+        promise = LeanRC::Promise.new (resolve, reject) ->
+          timeout = setTimeout (-> reject new Error 'Not handled'), 500
+          viewComponent.once 'TEST_TYPE', (data) ->
+            clearTimeout timeout
+            resolve data
+        executor.handleNotification Test::Notification.new 'TEST_NAME', 'TEST_BODY', 'TEST_TYPE'
+        try
+          yield promise
+        catch err
+        assert.instanceOf err, Error
+        assert.propertyVal err, 'message', 'Not handled'
+        promise = LeanRC::Promise.new (resolve, reject) ->
+          timeout = setTimeout (-> reject new Error 'Not handled'), 500
+          viewComponent.once 'TEST_TYPE', (data) ->
+            clearTimeout timeout
+            resolve data
+        executor.handleNotification Test::Notification.new Test::JOB_RESULT, 'TEST_BODY', 'TEST_TYPE'
+        result = yield promise
+        assert.equal result, 'TEST_BODY'
+        yield return
   ###
   describe '#stop', ->
     facade = null
