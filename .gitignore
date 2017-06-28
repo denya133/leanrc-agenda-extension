@@ -8,6 +8,4 @@ package.zip
 dist
 doc
 
-compiled_migrations
-
 public

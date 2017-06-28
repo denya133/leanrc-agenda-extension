@@ -16,7 +16,7 @@ ssh-add ~/.ssh/id_rsa
 $ sudo aptitude install redis-server graphicsmagick mc git build-essential
 $ sudo npm install -g n
 $ sudo n 6.10
-$ npm install -g gulp coffee-script mocha gulp scaffolt forever
+$ npm install -g coffee-script mocha
 ```
 
 ## Testing

@@ -21,13 +21,10 @@
     }
   ],
   "keywords": [
-    "ArangoDB",
-    "Foxx",
     "API",
     "MVC",
-    "Rails",
-    "highload",
-    "distributed system"
+    "LeanRC",
+    "delayed job"
   ],
   "scripts": {
     "postinstall": "coffee --compile --output ./dist ./lib",
@@ -46,35 +43,19 @@
     "lodash": "^4.13.1"
   },
   "dependencies": {
-    "LeanRC": "git+ssh://git@bitbucket.org/webbasis/leanrc.git#v3.0.0-rc.6",
+    "LeanRC": "git+ssh://git@bitbucket.org/webbasis/leanrc.git#v3.0.0-rc.14",
     "agenda": "^0.9.1",
-    "change-case": "3.0.0",
-    "commander": "2.9.0",
     "fs-extra": "0.30.0",
-    "lower-case": "1.1.3",
-    "moment": "2.17.1",
-    "pluralize": "1.2.1",
-    "reportback": "0.1.9",
-    "scaffolt": "0.5.0",
-    "supererror": "0.7.1"
+    "moment": "2.17.1"
   },
   "devDependencies": {
     "chai": "^3.5.0",
     "coffee-script": "1.12.4",
     "glob": "^7.1.1",
-    "gulp": "3.9.1",
-    "gulp-coffee": "2.3.2",
-    "gulp-concat": "2.6.0",
-    "gulp-copy": "0.0.2",
-    "gulp-header": "1.8.8",
-    "gulp-symlink": "^2.1.4",
-    "gulp-zip": "3.2.0",
     "i": "^0.3.5",
-    "joi": "^10.5.2",
-    "lodash": "^4.17.4",
+    "joi": "^10.3.1",
+    "lodash": "^4.13.1",
     "needle": "^1.6.0",
-    "request": "^2.80.0",
-    "run-sequence": "1.2.2",
     "sinon": "^1.17.7",
     "statuses": "^1.3.1"
   }
