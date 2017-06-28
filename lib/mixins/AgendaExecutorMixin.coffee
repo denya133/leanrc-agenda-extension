@@ -31,10 +31,7 @@ module.exports = (Module)->
     @public execute: Function,
       default: ->
         #...
-        @facade.registerProxy Module::ApplicationResque.new RESQUE,
-          dbAddress: 'localhost:27017/resqueDB'
-          queuesCollection: 'delayedQueues'
-          jobsCollection: 'delayedJobs'
+        @facade.registerProxy Module::ApplicationResque.new RESQUE
         #...
 
   PrepareModelCommand.initialize()
@@ -80,7 +77,7 @@ module.exports = (Module)->
       @public onRegister: Function,
         default: (args...)->
           @super args...
-          {dbAddress:address, jobsCollection:collection} = @configs
+          {address, jobsCollection:collection} = @configs.agenda
           @setViewComponent new EventEmitter()
           @[ipoResque] = @facade.retrieveProxy Module::RESQUE
           name = "#{os.hostname()}-#{process.pid}"
@@ -110,7 +107,7 @@ module.exports = (Module)->
         return: Module::NILL
         default: (aoAgenda) ->
           aoAgenda ?= @[ipoAgenda]
-          { queuesCollection } = @configs
+          { queuesCollection } = @configs.agenda
           co ->
             voAgenda = yield aoAgenda
             voQueuesCollection = voAgenda._mdb.collection queuesCollection ? 'delayedQueues'

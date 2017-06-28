@@ -29,10 +29,7 @@ module.exports = (Module)->
     @public execute: Function,
       default: ->
         #...
-        @facade.registerProxy Module::ApplicationResque.new RESQUE,
-          dbAddress: 'localhost:27017/resqueDB'
-          queuesCollection: 'delayedQueues'
-          jobsCollection: 'delayedJobs'
+        @facade.registerProxy Module::ApplicationResque.new RESQUE
         #...
 
   PrepareModelCommand.initialize()
@@ -54,7 +51,7 @@ module.exports = (Module)->
       @public onRegister: Function,
         default: (args...)->
           @super args...
-          {dbAddress:address, jobsCollection:collection} = @configs
+          {address, jobsCollection:collection} = @configs.agenda
           name = os.hostname() + '-' + process.pid
           @[ipoAgenda] = Module::Promise.new (resolve, reject) ->
             voAgenda = new Agenda()
@@ -82,7 +79,7 @@ module.exports = (Module)->
       @public @async ensureQueue: Function,
         default: (name, concurrency = 1)->
           name = @fullQueueName name
-          {queuesCollection} = @configs
+          {queuesCollection} = @configs.agenda
           voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
           if (queue = yield voQueuesCollection.findOne name: name)?
             queue.concurrency = concurrency
@@ -94,7 +91,7 @@ module.exports = (Module)->
       @public @async getQueue: Function,
         default: (name)->
           name = @fullQueueName name
-          {queuesCollection} = @configs
+          {queuesCollection} = @configs.agenda
           voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
           if (queue = yield voQueuesCollection.findOne name: name)?
             {concurrency} = queue
@@ -105,14 +102,14 @@ module.exports = (Module)->
       @public @async removeQueue: Function,
         default: (queueName)->
           queueName = @fullQueueName queueName
-          {queuesCollection} = @configs
+          {queuesCollection} = @configs.agenda
           voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
           yield voQueuesCollection.deleteOne name: queueName
           yield return
 
       @public @async allQueues: Function,
         default: ->
-          {queuesCollection} = @configs
+          {queuesCollection} = @configs.agenda
           voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
           queues = yield voQueuesCollection.find {}
           queues = yield queues.toArray()
