@@ -137,14 +137,14 @@ module.exports = (Module)->
 
       @public @async start: Function,
         args: []
-        return: NILL
+        return: Module::NILL
         default: ->
           (yield @[ipoAgenda]).start()
           yield return
 
       @public @async stop: Function,
         args: []
-        return: NILL
+        return: Module::NILL
         default: ->
           (yield @[ipoAgenda]).stop()
           yield return
