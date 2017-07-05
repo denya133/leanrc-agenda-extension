@@ -45,10 +45,7 @@ module.exports = (Module)->
   Module.defineMixin Module::Mediator, (BaseClass) ->
     class AgendaExecutorMixin extends BaseClass
       @inheritProtected()
-
       @include Module::ConfigurableMixin
-
-      @module Module
 
       @public fullQueueName: Function,
         args: [String]
@@ -62,6 +59,7 @@ module.exports = (Module)->
         default: ->
           [
             Module::JOB_RESULT
+            Module::START_RESQUE
           ]
 
       @public handleNotification: Function,
@@ -72,6 +70,8 @@ module.exports = (Module)->
           switch vsName
             when Module::JOB_RESULT
               @getViewComponent().emit vsType, voBody
+            when Module::START_RESQUE
+              @start()
           return
 
       @public onRegister: Function,
@@ -94,7 +94,6 @@ module.exports = (Module)->
             voAgenda.on 'ready', co.wrap ->
               yield self.ensureIndexes voAgenda
               yield self.defineProcessors voAgenda
-              voAgenda.start()
               resolve voAgenda
               yield return
             voAgenda.on 'error', (err) ->
@@ -130,11 +129,25 @@ module.exports = (Module)->
             continue
           yield return
 
-      @public onRemove: Function,
+      @public @async onRemove: Function,
         default: (args...)->
           @super args...
-          co => (yield @[ipoAgenda]).stop()
-          return
+          yield @stop()
+          yield return
+
+      @public @async start: Function,
+        args: []
+        return: NILL
+        default: ->
+          (yield @[ipoAgenda]).start()
+          yield return
+
+      @public @async stop: Function,
+        args: []
+        return: NILL
+        default: ->
+          (yield @[ipoAgenda]).stop()
+          yield return
 
 
     AgendaExecutorMixin.initializeMixin()
