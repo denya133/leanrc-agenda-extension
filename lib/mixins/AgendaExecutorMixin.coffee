@@ -117,15 +117,16 @@ module.exports = (Module)->
         args: []
         return: Module::NILL
         default: (aoAgenda) ->
+          executor = @
           voAgenda = yield aoAgenda ? @[ipoAgenda]
           for {name, concurrency} in yield @[ipoResque].allQueues()
             [moduleName] = name.split '|>'
             if moduleName is @moduleName()
-              voAgenda.define name, {concurrency}, co.wrap (job, done)=>
+              voAgenda.define name, {concurrency}, (job, done) ->
                 reverse = crypto.randomBytes 32
-                @getViewComponent().once reverse, (aoError) -> done aoError
+                executor.getViewComponent().once reverse, (aoError) -> done aoError
                 {scriptName, data} = job.attrs.data
-                @sendNotification scriptName, data, reverse
+                executor.sendNotification scriptName, data, reverse
             continue
           yield return
 
