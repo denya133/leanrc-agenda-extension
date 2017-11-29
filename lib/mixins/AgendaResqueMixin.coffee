@@ -1,7 +1,5 @@
 
 
-_             = require 'lodash'
-LeanRC        = require 'LeanRC'
 os            = require 'os'
 Agenda        = require 'agenda'
 
@@ -38,13 +36,17 @@ module.exports = (Module)->
 
 
 module.exports = (Module)->
-  {co} = Module::Utils
+  {
+    Resque
+    ConfigurableMixin
+    Utils: {_, co}
+  } = Module::
 
-  Module.defineMixin Module::Resque, (BaseClass) ->
+  Module.defineMixin Resque, (BaseClass) ->
     class AgendaResqueMixin extends BaseClass
       @inheritProtected()
 
-      @include Module::ConfigurableMixin
+      @include ConfigurableMixin
 
       ipoAgenda = @private agenda: Object
 

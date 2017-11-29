@@ -1,6 +1,5 @@
 
 
-_             = require 'lodash'
 os            = require 'os'
 Agenda        = require 'agenda'
 EventEmitter  = require 'events'
@@ -40,12 +39,21 @@ module.exports = (Module)->
 
 
 module.exports = (Module)->
-  {co} = Module::Utils
+  {
+    NILL
+    JOB_RESULT
+    START_RESQUE
 
-  Module.defineMixin Module::Mediator, (BaseClass) ->
+    Mediator
+    ConfigurableMixin
+    ResqueInterface
+    Utils: { _, co }
+  } = Module::Utils
+
+  Module.defineMixin Mediator, (BaseClass) ->
     class AgendaExecutorMixin extends BaseClass
       @inheritProtected()
-      @include Module::ConfigurableMixin
+      @include ConfigurableMixin
 
       @public fullQueueName: Function,
         args: [String]
@@ -53,13 +61,13 @@ module.exports = (Module)->
         default: (queueName)-> @[ipoResque].fullQueueName queueName
 
       ipoAgenda = @private agenda: Object
-      ipoResque = @private resque: Module::ResqueInterface
+      ipoResque = @private resque: ResqueInterface
 
       @public listNotificationInterests: Function,
         default: ->
           [
-            Module::JOB_RESULT
-            Module::START_RESQUE
+            JOB_RESULT
+            START_RESQUE
           ]
 
       @public handleNotification: Function,
@@ -68,9 +76,9 @@ module.exports = (Module)->
           voBody = aoNotification.getBody()
           vsType = aoNotification.getType()
           switch vsName
-            when Module::JOB_RESULT
+            when JOB_RESULT
               @getViewComponent().emit vsType, voBody
-            when Module::START_RESQUE
+            when START_RESQUE
               @start()
           return
 
@@ -79,7 +87,7 @@ module.exports = (Module)->
           @super args...
           {address, jobsCollection:collection} = @configs.agenda
           @setViewComponent new EventEmitter()
-          @[ipoResque] = @facade.retrieveProxy Module::RESQUE
+          @[ipoResque] = @facade.retrieveProxy RESQUE
           name = "#{os.hostname()}-#{process.pid}"
           self = @
           @[ipoAgenda] = Module::Promise.new (resolve, reject) ->
@@ -103,7 +111,7 @@ module.exports = (Module)->
 
       @public ensureIndexes: Function,
         args: []
-        return: Module::NILL
+        return: NILL
         default: (aoAgenda) ->
           aoAgenda ?= @[ipoAgenda]
           { queuesCollection } = @configs.agenda
@@ -115,7 +123,7 @@ module.exports = (Module)->
 
       @public @async defineProcessors: Function,
         args: []
-        return: Module::NILL
+        return: NILL
         default: (aoAgenda) ->
           executor = @
           voAgenda = yield aoAgenda ? @[ipoAgenda]
@@ -138,14 +146,14 @@ module.exports = (Module)->
 
       @public @async start: Function,
         args: []
-        return: Module::NILL
+        return: NILL
         default: ->
           (yield @[ipoAgenda]).start()
           yield return
 
       @public @async stop: Function,
         args: []
-        return: Module::NILL
+        return: NILL
         default: ->
           (yield @[ipoAgenda]).stop()
           yield return
