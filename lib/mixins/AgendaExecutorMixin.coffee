@@ -43,6 +43,7 @@ module.exports = (Module)->
     NILL
     JOB_RESULT
     START_RESQUE
+    RESQUE
 
     Mediator
     ConfigurableMixin
