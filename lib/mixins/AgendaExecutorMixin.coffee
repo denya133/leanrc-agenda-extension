@@ -48,7 +48,7 @@ module.exports = (Module)->
     ConfigurableMixin
     ResqueInterface
     Utils: { _, co }
-  } = Module::Utils
+  } = Module::
 
   Module.defineMixin Mediator, (BaseClass) ->
     class AgendaExecutorMixin extends BaseClass
