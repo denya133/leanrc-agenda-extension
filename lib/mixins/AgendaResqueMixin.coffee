@@ -75,7 +75,7 @@ module.exports = (Module)->
         default: (args...)->
           @super args...
           @[ipoAgenda].then (aoAgenda) ->
-            aoAgenda.stop()
+            aoAgenda._mdb.close()
           return
 
       @public @async ensureQueue: Function,
