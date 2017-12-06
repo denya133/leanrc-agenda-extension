@@ -2,6 +2,7 @@
 
 os            = require 'os'
 Agenda        = require 'agenda'
+{MongoClient} = require 'mongodb'
 
 ###
 ```coffee
@@ -42,41 +43,58 @@ module.exports = (Module)->
     Utils: {_, co}
   } = Module::
 
+  _connection = null
+  _consumers = null
+
   Module.defineMixin Resque, (BaseClass) ->
     class AgendaResqueMixin extends BaseClass
       @inheritProtected()
 
       @include ConfigurableMixin
 
-      ipoAgenda = @private agenda: Object
+      ipoAgenda           = @private agenda: Object
+
+      @public connection: PromiseInterface,
+        get: ->
+          _connection ?= co =>
+            credentials = ''
+            {address, jobsCollection:collection} = @configs.agenda
+            name = os.hostname() + '-' + process.pid
+            connection = yield MongoClient.connect address
+            @[ipoAgenda] = Module::Promise.new (resolve, reject) ->
+              voAgenda = new Agenda()
+                .mongo connection, collection ? 'delayedJobs'
+                .name name
+                .maxConcurrency 16
+                .defaultConcurrency 16
+                .lockLimit 16
+                .defaultLockLimit 16
+                .defaultLockLifetime 5000
+              voAgenda.on 'ready', ->
+                resolve voAgenda
+              voAgenda.on 'error', (err) ->
+                reject err
+              return
+            yield return connection
+          _connection
 
       @public onRegister: Function,
         default: (args...)->
           @super args...
-          {address, jobsCollection:collection} = @configs.agenda
-          name = os.hostname() + '-' + process.pid
-          @[ipoAgenda] = Module::Promise.new (resolve, reject) ->
-            voAgenda = new Agenda()
-              .database address, collection ? 'delayedJobs'
-              .name name
-              .maxConcurrency 16
-              .defaultConcurrency 16
-              .lockLimit 16
-              .defaultLockLimit 16
-              .defaultLockLifetime 5000
-            voAgenda.on 'ready', ->
-              resolve voAgenda
-            voAgenda.on 'error', (err) ->
-              reject err
-            return
+          do => @connection
+          _consumers ?= 0
+          _consumers++
           return
 
-      @public onRemove: Function,
+      @public @async onRemove: Function,
         default: (args...)->
           @super args...
-          @[ipoAgenda].then (aoAgenda) ->
-            aoAgenda._mdb.close()
-          return
+          _consumers--
+          if _consumers is 0
+            connection = yield _connection
+            yield connection.close(true)
+            _connection = undefined
+          yield return
 
       @public @async ensureQueue: Function,
         default: (name, concurrency = 1)->
