@@ -40,6 +40,7 @@ module.exports = (Module)->
   {
     Resque
     ConfigurableMixin
+    PromiseInterface
     Utils: {_, co}
   } = Module::
 
