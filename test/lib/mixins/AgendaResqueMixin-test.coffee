@@ -100,8 +100,8 @@ describe 'AgendaResqueMixin', ->
         resque.onRegister()
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
-        spyStop = sinon.spy agenda, 'stop'
-        resque.onRemove()
+        spyStop = sinon.spy agenda._mdb, 'close'
+        yield resque.onRemove()
         agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         assert.isTrue spyStop.called

@@ -54,6 +54,7 @@ describe 'AgendaExecutorMixin', ->
         executor = TestExecutor.new executorName, viewComponent
         assert.deepEqual executor.listNotificationInterests(), [
           LeanRC::JOB_RESULT
+          LeanRC::START_RESQUE
         ]
         yield return
   describe '#ensureIndexes', ->
@@ -86,7 +87,7 @@ describe 'AgendaExecutorMixin', ->
         TestResque.initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
-        {dbAddress:address, jobsCollection:collection, queuesCollection} = configs
+        {address, jobsCollection:collection, queuesCollection} = configs.agenda
         agenda = yield LeanRC::Promise.new (resolve, reject) ->
           voAgenda = new Agenda()
             .database address, collection ? 'delayedJobs'
@@ -139,7 +140,7 @@ describe 'AgendaExecutorMixin', ->
         TestExecutor.initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
-        {dbAddress:address, jobsCollection:collection} = configs
+        {address, jobsCollection:collection} = configs.agenda
         agenda = yield LeanRC::Promise.new (resolve, reject) ->
           voAgenda = new Agenda()
             .database address, collection ? 'delayedJobs'
@@ -293,14 +294,14 @@ describe 'AgendaExecutorMixin', ->
         assert.equal agenda._defaultLockLifetime, 5000
         assert.property agenda._definitions, resque.fullQueueName 'TEST_QUEUE_1'
         assert.property agenda._definitions, resque.fullQueueName 'TEST_QUEUE_2'
-        assert.isDefined agenda._processInterval
+        assert.isUndefined agenda._processInterval
         yield return
   describe '#onRemove', ->
     facade = null
     agenda = null
     queueNames = []
     KEY = 'TEST_AGENDA_EXECUTOR_004'
-    afterEach ->
+    after ->
       co ->
         yield clearTempQueues agenda, queueNames
         facade?.remove?()

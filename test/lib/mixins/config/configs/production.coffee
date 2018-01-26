@@ -15,15 +15,19 @@ module.exports =
     description: 'session cookie name'
     type: 'string'
     default: 'sid'
-  dbAddress:
-    description: 'Agenda database address'
-    type: 'string'
-    default: '127.0.0.1'
-  jobsCollection:
-    description: 'Agenda database collection'
-    type: 'string'
-    default: 'delayedJobs'
-  queuesCollection:
-    description: 'Agenda database queues collection'
-    type: 'string'
-    default: 'delayedQueues'
+  agenda:
+    description: "Configs for agenda"
+    type: "json"
+    default: "{\"address\":\"mongodb://localhost:27017/resqueDB\",\"jobsCollection\":\"delayedJobs\",\"queuesCollection\":\"delayedQueues\"}"
+  # dbAddress:
+  #   description: 'Agenda database address'
+  #   type: 'string'
+  #   default: '127.0.0.1'
+  # jobsCollection:
+  #   description: 'Agenda database collection'
+  #   type: 'string'
+  #   default: 'delayedJobs'
+  # queuesCollection:
+  #   description: 'Agenda database queues collection'
+  #   type: 'string'
+  #   default: 'delayedQueues'
