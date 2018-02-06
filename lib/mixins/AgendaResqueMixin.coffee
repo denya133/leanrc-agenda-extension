@@ -47,8 +47,8 @@ module.exports = (Module)->
   _connection = null
   _consumers = null
 
-  Module.defineMixin Resque, (BaseClass) ->
-    class AgendaResqueMixin extends BaseClass
+  Module.defineMixin 'AgendaResqueMixin', (BaseClass = Resque) ->
+    class extends BaseClass
       @inheritProtected()
 
       @include ConfigurableMixin
@@ -57,26 +57,37 @@ module.exports = (Module)->
 
       @public connection: PromiseInterface,
         get: ->
-          _connection ?= co =>
+          self = @
+          _connection ?= co ->
             credentials = ''
-            {address, jobsCollection:collection} = @configs.agenda
-            name = os.hostname() + '-' + process.pid
-            connection = yield MongoClient.connect address
-            @[ipoAgenda] = Module::Promise.new (resolve, reject) ->
-              voAgenda = new Agenda()
-                .mongo connection, collection ? 'delayedJobs'
-                .name name
-                .maxConcurrency 16
-                .defaultConcurrency 16
-                .lockLimit 16
-                .defaultLockLimit 16
-                .defaultLockLifetime 5000
-              voAgenda.on 'ready', ->
-                resolve voAgenda
-              voAgenda.on 'error', (err) ->
+            {address, jobsCollection:collection} = self.configs.agenda
+            name = "#{os.hostname()}-#{process.pid}"
+            yield Module::Promise.new (resolve, reject) ->
+              connection = null
+              self[ipoAgenda] = Module::Promise.new (resolveAgenda, rejectAgenda) ->
+                MongoClient.connect address
+                .then (conn) ->
+                  connection = conn
+                  voAgenda = new Agenda()
+                    .mongo connection, collection ? 'delayedJobs'
+                    .name name
+                    .maxConcurrency 16
+                    .defaultConcurrency 16
+                    .lockLimit 16
+                    .defaultLockLimit 16
+                    .defaultLockLifetime 5000
+                  voAgenda.on 'ready', ->
+                    resolveAgenda voAgenda
+                  voAgenda.on 'error', (err) ->
+                    rejectAgenda err
+                  return
+                return
+              self[ipoAgenda]
+              .then ->
+                resolve connection
+              .catch (err) ->
                 reject err
               return
-            yield return connection
           _connection
 
       @public onRegister: Function,
@@ -291,4 +302,4 @@ module.exports = (Module)->
                 resolve jobs ? []
 
 
-    AgendaResqueMixin.initializeMixin()
+      @initializeMixin()

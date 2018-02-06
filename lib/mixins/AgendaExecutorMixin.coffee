@@ -51,8 +51,8 @@ module.exports = (Module)->
     Utils: { _, co }
   } = Module::
 
-  Module.defineMixin Mediator, (BaseClass) ->
-    class AgendaExecutorMixin extends BaseClass
+  Module.defineMixin 'AgendaExecutorMixin', (BaseClass = Mediator) ->
+    class extends BaseClass
       @inheritProtected()
       @include ConfigurableMixin
 
@@ -156,8 +156,16 @@ module.exports = (Module)->
         args: []
         return: NILL
         default: ->
-          (yield @[ipoAgenda]).stop()
+          agenda = yield @[ipoAgenda]
+          yield Module::Promise.new (resolve, reject) ->
+            agenda.stop (err) ->
+              if err?
+                reject err
+              else
+                resolve()
+              return
+            return
           yield return
 
 
-    AgendaExecutorMixin.initializeMixin()
+      @initializeMixin()
