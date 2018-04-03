@@ -46,14 +46,13 @@ module.exports = (Module)->
 
   _connection = null
   _consumers = null
+  _agenda = null
 
   Module.defineMixin 'AgendaResqueMixin', (BaseClass = Resque) ->
     class extends BaseClass
       @inheritProtected()
 
       @include ConfigurableMixin
-
-      ipoAgenda           = @private agenda: Object
 
       @public connection: PromiseInterface,
         get: ->
@@ -64,7 +63,7 @@ module.exports = (Module)->
             name = "#{os.hostname()}-#{process.pid}"
             yield Module::Promise.new (resolve, reject) ->
               connection = null
-              self[ipoAgenda] = Module::Promise.new (resolveAgenda, rejectAgenda) ->
+              _agenda = Module::Promise.new (resolveAgenda, rejectAgenda) ->
                 MongoClient.connect address
                 .then (conn) ->
                   connection = conn
@@ -82,7 +81,7 @@ module.exports = (Module)->
                     rejectAgenda err
                   return
                 return
-              self[ipoAgenda]
+              _agenda
               .then ->
                 resolve connection
               .catch (err) ->
@@ -112,7 +111,7 @@ module.exports = (Module)->
         default: (name, concurrency = 1)->
           name = @fullQueueName name
           {queuesCollection} = @configs.agenda
-          voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
+          voQueuesCollection = (yield _agenda)._mdb.collection queuesCollection ? 'delayedQueues'
           if (queue = yield voQueuesCollection.findOne name: name)?
             queue.concurrency = concurrency
             yield voQueuesCollection.updateOne {name}, queue
@@ -124,7 +123,7 @@ module.exports = (Module)->
         default: (name)->
           name = @fullQueueName name
           {queuesCollection} = @configs.agenda
-          voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
+          voQueuesCollection = (yield _agenda)._mdb.collection queuesCollection ? 'delayedQueues'
           if (queue = yield voQueuesCollection.findOne name: name)?
             {concurrency} = queue
             yield return {name, concurrency}
@@ -135,14 +134,14 @@ module.exports = (Module)->
         default: (queueName)->
           queueName = @fullQueueName queueName
           {queuesCollection} = @configs.agenda
-          voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
+          voQueuesCollection = (yield _agenda)._mdb.collection queuesCollection ? 'delayedQueues'
           yield voQueuesCollection.deleteOne name: queueName
           yield return
 
       @public @async allQueues: Function,
         default: ->
           {queuesCollection} = @configs.agenda
-          voQueuesCollection = (yield @[ipoAgenda])._mdb.collection queuesCollection ? 'delayedQueues'
+          voQueuesCollection = (yield _agenda)._mdb.collection queuesCollection ? 'delayedQueues'
           queues = yield voQueuesCollection.find {}
           queues = yield queues.toArray()
           queues = queues.map ({ name, concurrency }) -> { name, concurrency }
@@ -151,7 +150,7 @@ module.exports = (Module)->
       @public @async pushJob: Function,
         default: (queueName, scriptName, data, delayUntil)->
           queueName = @fullQueueName queueName
-          voAgenda = yield @[ipoAgenda]
+          voAgenda = yield _agenda
           createJob = (name, data, { delayUntil }, cb) ->
             if delayUntil?
               voAgenda.schedule delayUntil, name, data, cb
@@ -168,7 +167,7 @@ module.exports = (Module)->
       @public @async getJob: Function,
         default: (queueName, jobId, options = {})->
           queueName = @fullQueueName queueName
-          voAgenda = yield @[ipoAgenda]
+          voAgenda = yield _agenda
           yield return Module::Promise.new (resolve, reject)->
             voAgenda.jobs {name: queueName, _id: jobId}, (err, [job] = [])->
               if err
@@ -210,7 +209,7 @@ module.exports = (Module)->
       @public @async allJobs: Function,
         default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
-          voAgenda = yield @[ipoAgenda]
+          voAgenda = yield _agenda
           yield return Module::Promise.new (resolve, reject)->
             vhQuery = name: queueName
             if scriptName?
@@ -226,7 +225,7 @@ module.exports = (Module)->
       @public @async pendingJobs: Function,
         default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
-          voAgenda = yield @[ipoAgenda]
+          voAgenda = yield _agenda
           yield return Module::Promise.new (resolve, reject)->
             vhQuery =
               name: queueName
@@ -246,7 +245,7 @@ module.exports = (Module)->
       @public @async progressJobs: Function,
         default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
-          voAgenda = yield @[ipoAgenda]
+          voAgenda = yield _agenda
           yield return Module::Promise.new (resolve, reject)->
             vhQuery =
               name: queueName
@@ -266,7 +265,7 @@ module.exports = (Module)->
       @public @async completedJobs: Function,
         default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
-          voAgenda = yield @[ipoAgenda]
+          voAgenda = yield _agenda
           yield return Module::Promise.new (resolve, reject)->
             vhQuery =
               name: queueName
@@ -286,7 +285,7 @@ module.exports = (Module)->
       @public @async failedJobs: Function,
         default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
-          voAgenda = yield @[ipoAgenda]
+          voAgenda = yield _agenda
           yield return Module::Promise.new (resolve, reject)->
             vhQuery =
               name: queueName
