@@ -51,6 +51,8 @@ module.exports = (Module)->
     Utils: { _, co }
   } = Module::
 
+  _agenda = null
+
   Module.defineMixin 'AgendaExecutorMixin', (BaseClass = Mediator) ->
     class extends BaseClass
       @inheritProtected()
@@ -61,7 +63,7 @@ module.exports = (Module)->
         return: String
         default: (queueName)-> @[ipoResque].fullQueueName queueName
 
-      ipoAgenda = @private agenda: Object
+      # ipoAgenda = @private agenda: Object
       ipoResque = @private resque: ResqueInterface
 
       @public listNotificationInterests: Function,
@@ -91,7 +93,7 @@ module.exports = (Module)->
           @[ipoResque] = @facade.retrieveProxy RESQUE
           name = "#{os.hostname()}-#{process.pid}"
           self = @
-          @[ipoAgenda] = Module::Promise.new (resolve, reject) ->
+          _agenda = Module::Promise.new (resolve, reject) ->
             voAgenda = new Agenda()
               .database address, collection ? 'delayedJobs'
               .name name
@@ -114,7 +116,7 @@ module.exports = (Module)->
         args: []
         return: NILL
         default: (aoAgenda) ->
-          aoAgenda ?= @[ipoAgenda]
+          aoAgenda ?= _agenda
           { queuesCollection } = @configs.agenda
           co ->
             voAgenda = yield aoAgenda
@@ -127,13 +129,14 @@ module.exports = (Module)->
         return: NILL
         default: (aoAgenda) ->
           executor = @
-          voAgenda = yield aoAgenda ? @[ipoAgenda]
+          voAgenda = yield aoAgenda ? _agenda
           for {name, concurrency} in yield @[ipoResque].allQueues()
             [moduleName] = name.split '|>'
             if moduleName is @moduleName()
               voAgenda.define name, {concurrency}, (job, done) ->
                 reverse = crypto.randomBytes 32
-                executor.getViewComponent().once reverse, (aoError) -> done aoError
+                executor.getViewComponent().once reverse, ({error = null}) ->
+                  done error
                 {scriptName, data} = job.attrs.data
                 executor.sendNotification scriptName, data, reverse
             continue
@@ -149,14 +152,14 @@ module.exports = (Module)->
         args: []
         return: NILL
         default: ->
-          (yield @[ipoAgenda]).start()
+          (yield _agenda).start()
           yield return
 
       @public @async stop: Function,
         args: []
         return: NILL
         default: ->
-          agenda = yield @[ipoAgenda]
+          agenda = yield _agenda
           yield Module::Promise.new (resolve, reject) ->
             agenda.stop (err) ->
               if err?
