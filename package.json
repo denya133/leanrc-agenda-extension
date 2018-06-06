@@ -40,7 +40,7 @@
     "lodash": "^4.13.1"
   },
   "dependencies": {
-    "LeanRC": "git+ssh://git@bitbucket.org:webbasis/leanrc.git#v5.2.4",
+    "LeanRC": "git+ssh://git@bitbucket.org:webbasis/leanrc.git#feature/86-method-for-embeding-collection-and-record",
     "agenda": "^1.0.3",
     "coffeescript": "^2.1.1",
     "fs-extra": "0.30.0",
