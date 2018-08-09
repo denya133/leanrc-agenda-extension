@@ -107,6 +107,10 @@ module.exports = (Module)->
             _connection = undefined
           yield return
 
+      @public @async getAgenda: Function,
+        default: ->
+          return yield _agenda
+
       @public @async ensureQueue: Function,
         default: (name, concurrency = 1)->
           name = @fullQueueName name

@@ -142,6 +142,10 @@ module.exports = (Module)->
             continue
           yield return
 
+      @public @async getAgenda: Function,
+        default: ->
+          return yield _agenda
+
       @public @async onRemove: Function,
         default: (args...)->
           @super args...
