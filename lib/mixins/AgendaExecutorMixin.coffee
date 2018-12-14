@@ -44,36 +44,36 @@ module.exports = (Module)->
     JOB_RESULT
     START_RESQUE
     RESQUE
-
+    NilT
+    FuncG
+    Mixin
+    ResqueInterface, NotificationInterface
     Mediator
     ConfigurableMixin
-    ResqueInterface
     Utils: { _, co }
   } = Module::
 
   _agenda = null
 
-  Module.defineMixin 'AgendaExecutorMixin', (BaseClass = Mediator) ->
+  Module.defineMixin Mixin 'AgendaExecutorMixin', (BaseClass = Mediator) ->
     class extends BaseClass
       @inheritProtected()
       @include ConfigurableMixin
 
-      @public fullQueueName: Function,
-        args: [String]
-        return: String
+      @public fullQueueName: FuncG(String, String),
         default: (queueName)-> @[ipoResque].fullQueueName queueName
 
       # ipoAgenda = @private agenda: Object
-      ipoResque = @private resque: ResqueInterface
+      ipoResque = PointerT @private resque: ResqueInterface
 
-      @public listNotificationInterests: Function,
+      @public listNotificationInterests: FuncG([], Array),
         default: ->
           [
             JOB_RESULT
             START_RESQUE
           ]
 
-      @public handleNotification: Function,
+      @public handleNotification: FuncG(NotificationInterface, NilT),
         default: (aoNotification)->
           vsName = aoNotification.getName()
           voBody = aoNotification.getBody()
@@ -112,9 +112,7 @@ module.exports = (Module)->
             return
           return
 
-      @public ensureIndexes: Function,
-        args: []
-        return: NILL
+      @public ensureIndexes: FuncG([Object]),
         default: (aoAgenda) ->
           aoAgenda ?= _agenda
           { queuesCollection } = @configs.agenda
@@ -124,9 +122,7 @@ module.exports = (Module)->
             yield voQueuesCollection.createIndex 'name'
             yield return
 
-      @public @async defineProcessors: Function,
-        args: []
-        return: NILL
+      @public @async defineProcessors: FuncG([Object]),
         default: (aoAgenda) ->
           executor = @
           voAgenda = yield aoAgenda ? _agenda
@@ -142,7 +138,7 @@ module.exports = (Module)->
             continue
           yield return
 
-      @public @async getAgenda: Function,
+      @public @async getAgenda: FuncG([], Object),
         default: ->
           return yield _agenda
 
@@ -153,15 +149,11 @@ module.exports = (Module)->
           yield return
 
       @public @async start: Function,
-        args: []
-        return: NILL
         default: ->
           (yield _agenda).start()
           yield return
 
       @public @async stop: Function,
-        args: []
-        return: NILL
         default: ->
           agenda = yield _agenda
           yield Module::Promise.new (resolve, reject) ->
