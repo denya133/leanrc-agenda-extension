@@ -134,14 +134,16 @@ module.exports = (Module)->
             [moduleName] = name.split '|>'
             if moduleName is @moduleName()
               voAgenda.define name, {concurrency}, (job, done) ->
-                job.touch().then ->
+                job.touch (err = null)->
+                  if err?
+                    done err
+                    return
                   reverse = crypto.randomBytes 32
                   executor.getViewComponent().once reverse, ({error = null}) ->
                     done error
                   {scriptName, data} = job.attrs.data
                   executor.sendNotification scriptName, data, reverse
                   return
-                , done
             continue
           yield return
 
