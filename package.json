@@ -1,7 +1,7 @@
 {
   "name": "leanrc-agenda-extension",
   "description": "LeanRC extension for manage delayed jobs on NodeJS platform",
-  "version": "2.1.12",
+  "version": "2.1.13",
   "main": "dist/index.js",
   "private": true,
   "license": "AGPL-3.0",
