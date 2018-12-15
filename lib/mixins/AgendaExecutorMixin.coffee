@@ -101,7 +101,7 @@ module.exports = (Module)->
               .defaultConcurrency 16
               .lockLimit 16
               .defaultLockLimit 16
-              .defaultLockLifetime 5000
+              .defaultLockLifetime 10*60*1000
             voAgenda.on 'ready', co.wrap ->
               yield self.ensureIndexes voAgenda
               yield self.defineProcessors voAgenda
