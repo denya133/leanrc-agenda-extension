@@ -101,7 +101,7 @@ module.exports = (Module)->
               .defaultConcurrency 16
               .lockLimit 16
               .defaultLockLimit 16
-              .defaultLockLifetime 5000#10*60*1000
+              .defaultLockLifetime 2*60*1000
             voAgenda.on 'ready', co.wrap ->
               yield self.ensureIndexes voAgenda
               yield self.defineProcessors voAgenda
@@ -138,7 +138,7 @@ module.exports = (Module)->
                   if err?
                     done err
                     return
-                  interval = setInterval (-> job.touch()), 3000
+                  interval = setInterval (-> job.touch()), 5000
                   reverse = crypto.randomBytes 32
                   executor.getViewComponent().once reverse, ({error = null}) ->
                     clearInterval interval
