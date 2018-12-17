@@ -44,7 +44,7 @@ module.exports = (Module)->
     JOB_RESULT
     START_RESQUE
     RESQUE
-    NilT
+    NilT, PromiseT, PointerT
     FuncG
     Mixin
     ResqueInterface, NotificationInterface
@@ -63,7 +63,8 @@ module.exports = (Module)->
       @public fullQueueName: FuncG(String, String),
         default: (queueName)-> @[ipoResque].fullQueueName queueName
 
-      # ipoAgenda = @private agenda: Object
+      ipoAgenda = PointerT @private agenda: PromiseT,
+        get: -> Module::Promise.resolve _agenda
       ipoResque = PointerT @private resque: ResqueInterface
 
       @public listNotificationInterests: FuncG([], Array),
@@ -112,7 +113,7 @@ module.exports = (Module)->
             return
           return
 
-      @public ensureIndexes: FuncG([Object]),
+      @public ensureIndexes: FuncG([Object], PromiseT),
         default: (aoAgenda) ->
           aoAgenda ?= _agenda
           { queuesCollection } = @configs.agenda

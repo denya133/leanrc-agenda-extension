@@ -25,12 +25,12 @@ describe 'AgendaExecutorMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestExecutor extends LeanRC::Mediator
           @inheritProtected()
           @include Test::AgendaExecutorMixin
           @module Test
-        TestExecutor.initialize()
+          @initialize()
         executorName = 'TEST_AGENDA_EXECUTOR'
         viewComponent = { id: 'view-component' }
         executor = TestExecutor.new executorName, viewComponent
@@ -43,12 +43,12 @@ describe 'AgendaExecutorMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestExecutor extends LeanRC::Mediator
           @inheritProtected()
           @include Test::AgendaExecutorMixin
           @module Test
-        TestExecutor.initialize()
+          @initialize()
         executorName = 'TEST_AGENDA_EXECUTOR'
         viewComponent = { id: 'view-component' }
         executor = TestExecutor.new executorName, viewComponent
@@ -74,17 +74,17 @@ describe 'AgendaExecutorMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestExecutor extends LeanRC::Mediator
           @inheritProtected()
           @include Test::AgendaExecutorMixin
           @module Test
-        TestExecutor.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         {address, jobsCollection:collection, queuesCollection} = configs.agenda
@@ -122,22 +122,23 @@ describe 'AgendaExecutorMixin', ->
         yield return
     it 'should start resque', ->
       co ->
+        # throw new Error 'FAIL'
         facade = LeanRC::Facade.getInstance KEY
         class Test extends LeanRC
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         class TestExecutor extends LeanRC::Mediator
           @inheritProtected()
           @include Test::AgendaExecutorMixin
           @module Test
-        TestExecutor.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         {address, jobsCollection:collection} = configs.agenda
@@ -149,7 +150,7 @@ describe 'AgendaExecutorMixin', ->
             .defaultConcurrency 16
             .lockLimit 16
             .defaultLockLimit 16
-            .defaultLockLifetime 5000
+            .defaultLockLifetime 30*60*1000
           voAgenda.on 'ready', -> resolve voAgenda
           voAgenda.on 'error', (err) -> reject err
           return
@@ -163,8 +164,10 @@ describe 'AgendaExecutorMixin', ->
         executor.initializeNotifier KEY
         vpoResque = TestExecutor.instanceVariables['_resque'].pointer
         executor[vpoResque] = resque
-        vpoAgenda = TestExecutor.instanceVariables['_agenda'].pointer
-        executor[vpoAgenda] = agenda
+        # agenda = yield executor.getAgenda()
+        # vpoAgenda = yield resque.getAgenda()
+        # vpoAgenda = TestExecutor.instanceVariables['_agenda'].pointer
+        # executor[vpoAgenda] = agenda
         yield executor.ensureIndexes agenda
         yield executor.defineProcessors agenda
         assert.property agenda._definitions, resque.fullQueueName 'TEST_QUEUE_1'
@@ -177,12 +180,12 @@ describe 'AgendaExecutorMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestExecutor extends LeanRC::Mediator
           @inheritProtected()
           @include Test::AgendaExecutorMixin
           @module Test
-        TestExecutor.initialize()
+          @initialize()
         executorName = 'TEST_AGENDA_EXECUTOR'
         viewComponent = new EventEmitter
         executor = TestExecutor.new executorName, viewComponent
@@ -223,17 +226,17 @@ describe 'AgendaExecutorMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         class TestExecutor extends LeanRC::Mediator
           @inheritProtected()
           @include Test::AgendaExecutorMixin
           @module Test
-        TestExecutor.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         facade.registerProxy TestResque.new LeanRC::RESQUE
@@ -262,17 +265,17 @@ describe 'AgendaExecutorMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         class TestExecutor extends LeanRC::Mediator
           @inheritProtected()
           @include Test::AgendaExecutorMixin
           @module Test
-        TestExecutor.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         facade.registerProxy TestResque.new LeanRC::RESQUE
@@ -284,14 +287,15 @@ describe 'AgendaExecutorMixin', ->
         executor = TestExecutor.new LeanRC::MEM_RESQUE_EXEC
         executor.initializeNotifier KEY
         executor.onRegister()
-        agenda = yield executor[TestExecutor.instanceVariables['_agenda'].pointer]
+        agenda = yield executor.getAgenda()
+        # agenda = yield executor[TestExecutor.instanceVariables['_agenda'].pointer]
         assert.instanceOf agenda, Agenda
         assert.include agenda._name, require('os').hostname()
         assert.equal agenda._maxConcurrency, 16
         assert.equal agenda._defaultConcurrency, 16
         assert.equal agenda._lockLimit, 16
         assert.equal agenda._defaultLockLimit, 16
-        assert.equal agenda._defaultLockLifetime, 5000
+        assert.equal agenda._defaultLockLifetime, 30*60*1000
         assert.property agenda._definitions, resque.fullQueueName 'TEST_QUEUE_1'
         assert.property agenda._definitions, resque.fullQueueName 'TEST_QUEUE_2'
         assert.isUndefined agenda._processInterval
@@ -313,17 +317,17 @@ describe 'AgendaExecutorMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         class TestExecutor extends LeanRC::Mediator
           @inheritProtected()
           @include Test::AgendaExecutorMixin
           @module Test
-        TestExecutor.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         facade.registerProxy TestResque.new LeanRC::RESQUE
@@ -335,8 +339,10 @@ describe 'AgendaExecutorMixin', ->
         executor = TestExecutor.new LeanRC::MEM_RESQUE_EXEC
         executor.initializeNotifier KEY
         executor.onRegister()
-        agenda = yield executor[TestExecutor.instanceVariables['_agenda'].pointer]
+        agenda = yield executor.getAgenda()
+        # agenda = yield executor[TestExecutor.instanceVariables['_agenda'].pointer]
         executor.onRemove()
-        agenda = yield executor[TestExecutor.instanceVariables['_agenda'].pointer]
+        agenda = yield executor.getAgenda()
+        # agenda = yield executor[TestExecutor.instanceVariables['_agenda'].pointer]
         assert.isUndefined agenda._processInterval
         yield return
