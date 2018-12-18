@@ -44,7 +44,7 @@ module.exports = (Module)->
     JOB_RESULT
     START_RESQUE
     RESQUE
-    NilT, PromiseT, PointerT
+    PromiseT, PointerT
     FuncG
     Mixin
     ResqueInterface, NotificationInterface
@@ -74,7 +74,7 @@ module.exports = (Module)->
             START_RESQUE
           ]
 
-      @public handleNotification: FuncG(NotificationInterface, NilT),
+      @public handleNotification: FuncG(NotificationInterface),
         default: (aoNotification)->
           vsName = aoNotification.getName()
           voBody = aoNotification.getBody()

@@ -40,7 +40,7 @@ module.exports = (Module)->
 
 module.exports = (Module)->
   {
-    AnyT, NilT, PointerT, PromiseT
+    AnyT, PointerT, PromiseT
     FuncG, ListG, StructG, MaybeG, UnionG
     Mixin
     Resque
@@ -140,7 +140,7 @@ module.exports = (Module)->
           else
             yield return
 
-      @public @async removeQueue: FuncG(String, NilT),
+      @public @async removeQueue: FuncG(String),
         default: (queueName)->
           queueName = @fullQueueName queueName
           {queuesCollection} = @configs.agenda
@@ -202,7 +202,7 @@ module.exports = (Module)->
             isDeleted = yes
           yield return isDeleted
 
-      @public @async abortJob: FuncG([String, UnionG String, Number], NilT),
+      @public @async abortJob: FuncG([String, UnionG String, Number]),
         default: (queueName, jobId)->
           job = yield @getJob queueName, jobId, native: yes
           if job? and not job.attrs.failReason? and not job.attrs.failedAt?
