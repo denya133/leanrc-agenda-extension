@@ -1,8 +1,10 @@
 
 
-os            = require 'os'
-Agenda        = require 'agenda'
-{MongoClient} = require 'mongodb'
+os = require 'os'
+Agenda = require 'agenda'
+{
+  MongoClient, ObjectID
+} = require 'mongodb'
 
 ###
 ```coffee
@@ -38,9 +40,11 @@ module.exports = (Module)->
 
 module.exports = (Module)->
   {
+    AnyT, PointerT, PromiseT
+    FuncG, ListG, StructG, MaybeG, UnionG
+    Mixin
     Resque
     ConfigurableMixin
-    PromiseInterface
     Utils: {_, co}
   } = Module::
 
@@ -48,13 +52,15 @@ module.exports = (Module)->
   _consumers = null
   _agenda = null
 
-  Module.defineMixin 'AgendaResqueMixin', (BaseClass = Resque) ->
+  Module.defineMixin Mixin 'AgendaResqueMixin', (BaseClass = Resque) ->
     class extends BaseClass
       @inheritProtected()
-
       @include ConfigurableMixin
 
-      @public connection: PromiseInterface,
+      ipoAgenda = PointerT @private agenda: PromiseT,
+        get: -> Module::Promise.resolve _agenda
+
+      @public connection: PromiseT,
         get: ->
           self = @
           _connection ?= co ->
@@ -107,11 +113,11 @@ module.exports = (Module)->
             _connection = undefined
           yield return
 
-      @public @async getAgenda: Function,
+      @public @async getAgenda: FuncG([], Object),
         default: ->
           return yield _agenda
 
-      @public @async ensureQueue: Function,
+      @public @async ensureQueue: FuncG([String, MaybeG Number], StructG name: String, concurrency: Number),
         default: (name, concurrency = 1)->
           name = @fullQueueName name
           {queuesCollection} = @configs.agenda
@@ -123,7 +129,7 @@ module.exports = (Module)->
             yield voQueuesCollection.insertOne {name, concurrency}
           yield return {name, concurrency}
 
-      @public @async getQueue: Function,
+      @public @async getQueue: FuncG(String, MaybeG StructG name: String, concurrency: Number),
         default: (name)->
           name = @fullQueueName name
           {queuesCollection} = @configs.agenda
@@ -134,7 +140,7 @@ module.exports = (Module)->
           else
             yield return
 
-      @public @async removeQueue: Function,
+      @public @async removeQueue: FuncG(String),
         default: (queueName)->
           queueName = @fullQueueName queueName
           {queuesCollection} = @configs.agenda
@@ -142,7 +148,7 @@ module.exports = (Module)->
           yield voQueuesCollection.deleteOne name: queueName
           yield return
 
-      @public @async allQueues: Function,
+      @public @async allQueues: FuncG([], ListG StructG name: String, concurrency: Number),
         default: ->
           {queuesCollection} = @configs.agenda
           voQueuesCollection = (yield _agenda)._mdb.collection queuesCollection ? 'delayedQueues'
@@ -151,7 +157,7 @@ module.exports = (Module)->
           queues = queues.map ({ name, concurrency }) -> { name, concurrency }
           yield return queues
 
-      @public @async pushJob: Function,
+      @public @async pushJob: FuncG([String, String, AnyT, MaybeG Number], UnionG String, Number),
         default: (queueName, scriptName, data, delayUntil)->
           queueName = @fullQueueName queueName
           voAgenda = yield _agenda
@@ -160,20 +166,20 @@ module.exports = (Module)->
               voAgenda.schedule delayUntil, name, data, cb
             else
               voAgenda.now name, data, cb
-          yield return Module::Promise.new (resolve, reject)->
+          return yield Module::Promise.new (resolve, reject)->
             job = createJob queueName, {scriptName, data}, { delayUntil }, (err) ->
               if err?
                 reject err
               else
-                resolve job.attrs._id
+                resolve String job.attrs._id
             return
 
-      @public @async getJob: Function,
+      @public @async getJob: FuncG([String, UnionG String, Number], MaybeG Object),
         default: (queueName, jobId, options = {})->
           queueName = @fullQueueName queueName
           voAgenda = yield _agenda
-          yield return Module::Promise.new (resolve, reject)->
-            voAgenda.jobs {name: queueName, _id: jobId}, (err, [job] = [])->
+          return yield Module::Promise.new (resolve, reject)->
+            voAgenda.jobs {name: queueName, _id: ObjectID jobId}, (err, [job] = [])->
               if err
                 reject err
               else
@@ -182,8 +188,9 @@ module.exports = (Module)->
                 else
                   null
 
-      @public @async deleteJob: Function,
+      @public @async deleteJob: FuncG([String, UnionG String, Number], Boolean),
         default: (queueName, jobId)->
+          isDeleted = no
           job = yield @getJob queueName, jobId, native: yes
           if job?
             yield Module::Promise.new (resolve, reject)->
@@ -193,11 +200,9 @@ module.exports = (Module)->
                 else
                   resolve()
             isDeleted = yes
-          else
-            isDeleted = no
           yield return isDeleted
 
-      @public @async abortJob: Function,
+      @public @async abortJob: FuncG([String, UnionG String, Number]),
         default: (queueName, jobId)->
           job = yield @getJob queueName, jobId, native: yes
           if job? and not job.attrs.failReason? and not job.attrs.failedAt?
@@ -210,11 +215,11 @@ module.exports = (Module)->
                   resolve()
           yield return
 
-      @public @async allJobs: Function,
+      @public @async allJobs: FuncG([String, MaybeG String], ListG Object),
         default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
           voAgenda = yield _agenda
-          yield return Module::Promise.new (resolve, reject)->
+          return yield Module::Promise.new (resolve, reject)->
             vhQuery = name: queueName
             if scriptName?
               vhQuery['data.scriptName'] = scriptName
@@ -226,11 +231,11 @@ module.exports = (Module)->
                   jobs = jobs.map (job) -> job.attrs
                 resolve jobs ? []
 
-      @public @async pendingJobs: Function,
+      @public @async pendingJobs: FuncG([String, MaybeG String], ListG Object),
         default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
           voAgenda = yield _agenda
-          yield return Module::Promise.new (resolve, reject)->
+          return yield Module::Promise.new (resolve, reject)->
             vhQuery =
               name: queueName
               lastRunAt: $exists: no
@@ -246,11 +251,11 @@ module.exports = (Module)->
                   jobs = jobs.map (job) -> job.attrs
                 resolve jobs ? []
 
-      @public @async progressJobs: Function,
+      @public @async progressJobs: FuncG([String, MaybeG String], ListG Object),
         default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
           voAgenda = yield _agenda
-          yield return Module::Promise.new (resolve, reject)->
+          return yield Module::Promise.new (resolve, reject)->
             vhQuery =
               name: queueName
               lastRunAt: $exists: yes
@@ -266,11 +271,11 @@ module.exports = (Module)->
                   jobs = jobs.map (job) -> job.attrs
                 resolve jobs ? []
 
-      @public @async completedJobs: Function,
+      @public @async completedJobs: FuncG([String, MaybeG String], ListG Object),
         default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
           voAgenda = yield _agenda
-          yield return Module::Promise.new (resolve, reject)->
+          return yield Module::Promise.new (resolve, reject)->
             vhQuery =
               name: queueName
               lastRunAt: $exists: yes
@@ -286,11 +291,11 @@ module.exports = (Module)->
                   jobs = jobs.map (job) -> job.attrs
                 resolve jobs ? []
 
-      @public @async failedJobs: Function,
+      @public @async failedJobs: FuncG([String, MaybeG String], ListG Object),
         default: (queueName, scriptName, options = {})->
           queueName = @fullQueueName queueName
           voAgenda = yield _agenda
-          yield return Module::Promise.new (resolve, reject)->
+          return yield Module::Promise.new (resolve, reject)->
             vhQuery =
               name: queueName
               failedAt: $exists: yes

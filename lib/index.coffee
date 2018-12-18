@@ -35,16 +35,15 @@ module.exports = TestApp.initialize().freeze()
 ###
 
 Extension = (BaseClass) ->
-  class AgendaExtension extends BaseClass
+  class extends BaseClass
     @inheritProtected()
 
     require('./mixins/AgendaResqueMixin') @Module
     require('./mixins/AgendaExecutorMixin') @Module
-  AgendaExtension.initializeMixin()
+    @initializeMixin()
 
-sample = Extension LeanRC
-Reflect.defineProperty Extension, 'reification',
-  value: sample
+Reflect.defineProperty Extension, 'name',
+  value: 'AgendaExtension'
 
 
 module.exports = Extension
