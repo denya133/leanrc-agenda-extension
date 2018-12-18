@@ -2,6 +2,7 @@
 sinon = require 'sinon'
 _ = require 'lodash'
 EventEmitter = require 'events'
+{ ObjectID } = require 'mongodb'
 Agenda = require 'agenda'
 LeanRC = require 'LeanRC'
 AgendaExtension = require.main.require 'lib'
@@ -16,7 +17,7 @@ defineJob = (aoAgenda, asName, anDuration = 250, aoTrigger) ->
     , anDuration
   return
 
-clearTempQueues = (aoAgenda, alQueues) ->
+clearTempQueues = co.wrap (aoAgenda, alQueues) ->
   if aoAgenda?
     jobsCollection = aoAgenda._mdb.collection 'delayedJobs'
     queuesCollection = aoAgenda._mdb.collection 'delayedQueues'
@@ -35,12 +36,12 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         assert.instanceOf resque, TestResque
         yield return
@@ -55,18 +56,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         resque.initializeNotifier KEY
         resque.onRegister()
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda() #[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         assert.instanceOf agenda, Agenda
         assert.include agenda._name, require('os').hostname()
@@ -87,22 +88,24 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         resque.initializeNotifier KEY
         resque.onRegister()
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         spyStop = sinon.spy agenda._mdb, 'close'
         yield resque.onRemove()
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         assert.isTrue spyStop.called
         yield return
@@ -123,17 +126,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         { name, concurrency } = yield resque.ensureQueue 'TEST_QUEUE', 5
         queueNames.push name
@@ -167,17 +171,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         yield resque.ensureQueue 'TEST_QUEUE', 5
         queue = yield resque.getQueue 'TEST_QUEUE'
@@ -202,17 +207,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE', 5
         queueNames.push name
@@ -239,17 +245,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
@@ -295,17 +302,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
@@ -313,7 +321,7 @@ describe 'AgendaResqueMixin', ->
         DATE = new Date Date.now() + 60000
         jobId = yield resque.pushJob 'TEST_QUEUE_1', 'TEST_SCRIPT', DATA, DATE
         jobsCollection = agenda?._mdb.collection 'delayedJobs'
-        job = yield jobsCollection.findOne _id: jobId
+        job = yield jobsCollection.findOne _id: ObjectID jobId
         assert.include job,
           name: 'Test|>TEST_QUEUE_1'
           type: 'normal'
@@ -340,17 +348,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
@@ -384,17 +393,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
@@ -430,17 +440,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
@@ -487,17 +498,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         { name } = yield resque.ensureQueue 'TEST_QUEUE_1', 1
         queueNames.push name
@@ -534,17 +546,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 250
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450
@@ -584,17 +597,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 2000, trigger
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450, trigger
@@ -640,17 +654,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 250, trigger
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450, trigger
@@ -693,17 +708,18 @@ describe 'AgendaResqueMixin', ->
           @inheritProtected()
           @include AgendaExtension
           @root "#{__dirname}/config/root"
-        Test.initialize()
+          @initialize()
         class TestResque extends LeanRC::Resque
           @inheritProtected()
           @include Test::AgendaResqueMixin
           @module Test
-        TestResque.initialize()
+          @initialize()
         configs = Test::Configuration.new Test::CONFIGURATION, Test::ROOT
         facade.registerProxy configs
         resque = TestResque.new 'TEST_AGENDA_RESQUE_MIXIN'
         facade.registerProxy resque
-        agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
+        agenda = yield resque.getAgenda()
+        # agenda = yield resque[TestResque.instanceVariables['_agenda'].pointer]
         agenda.start()
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_1'), 250, trigger
         defineJob agenda, resque.fullQueueName('TEST_QUEUE_2'), 450, trigger
