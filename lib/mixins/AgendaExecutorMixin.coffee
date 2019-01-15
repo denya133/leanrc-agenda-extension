@@ -136,7 +136,7 @@ module.exports = (Module)->
                     done err
                     return
                   interval = setInterval (-> job.touch()), 5000
-                  reverse = crypto.randomBytes 32
+                  reverse = crypto.randomBytes(32).toString 'hex'
                   executor.getViewComponent().once reverse, ({error = null}) ->
                     clearInterval interval
                     done error
