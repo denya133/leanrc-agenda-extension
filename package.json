@@ -1,10 +1,10 @@
 {
   "name": "leanrc-agenda-extension",
   "description": "LeanRC extension for manage delayed jobs on NodeJS platform",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "main": "dist/index.js",
   "private": true,
-  "license": "AGPL-3.0",
+  "license": "LGPL-3.0",
   "author": {
     "name": "Denis Trayzhon",
     "email": "d.g.trayzhon@gmail.com"
@@ -40,7 +40,7 @@
     "lodash": "^4.13.1"
   },
   "dependencies": {
-    "LeanRC": "git+ssh://git@bitbucket.org:webbasis/leanrc.git#v6.0.0",
+    "LeanRC": "git+ssh://git@bitbucket.org:webbasis/leanrc.git#v6.2.0",
     "agenda": "^1.0.3",
     "coffeescript": "2.3.1",
     "fs-extra": "0.30.0",
