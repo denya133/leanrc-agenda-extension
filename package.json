@@ -37,7 +37,7 @@
     "lodash": "4.17.4"
   },
   "dependencies": {
-    "LeanRC": "https://github.com/LeanPack/leanrc.git#v6.2.3",
+    "LeanRC": "https://github.com/LeanPack/leanrc.git#v6.2.4",
     "agenda": "1.0.3",
     "coffeescript": "2.3.1",
     "fs-extra": "0.30.0",
