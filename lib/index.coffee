@@ -13,14 +13,12 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with leanrc-agenda-extension.  If not, see <https://www.gnu.org/licenses/>.
 
-LeanRC = require 'LeanRC'
-
 ###
 Example of use
 
 ```coffee
-LeanRC = require 'LeanRC'
-AgendaExtension = require 'leanrc-agenda-extension'
+LeanRC = require '@leansdk/leanrc/lib'
+AgendaExtension = require '@leansdk/leanrc-agenda-extension/lib'
 
 class TestApp extends LeanRC
   @inheritProtected()
