@@ -4,7 +4,7 @@ _ = require 'lodash'
 EventEmitter = require 'events'
 { ObjectID } = require 'mongodb'
 Agenda = require 'agenda'
-LeanRC = require 'LeanRC'
+LeanRC = require '@leansdk/leanrc/lib'
 AgendaExtension = require.main.require 'lib'
 { co } = LeanRC::Utils
 

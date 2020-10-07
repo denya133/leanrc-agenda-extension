@@ -3,7 +3,7 @@ EventEmitter  = require 'events'
 sinon = require 'sinon'
 _ = require 'lodash'
 Agenda = require 'agenda'
-LeanRC = require 'LeanRC'
+LeanRC = require '@leansdk/leanrc/lib'
 AgendaExtension = require.main.require 'lib'
 { co } = LeanRC::Utils
 
